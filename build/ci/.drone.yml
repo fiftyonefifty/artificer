@@ -4,11 +4,16 @@ name: artificer
 steps:
   - name: Build Container
     image: plugin/docker
+    environment:
+      USERNAME:
+        from_secret: docker_user
+      PASSWORD:
+        from_secret: docker_pass
     settings:
       dockerfile: ../package/Dockerfile
-      username: test
-      password: test
-      repo: test
+      username: $USERNAME
+      password: $PASSWORD
+      repo: 5150collective/artificer
       target: production
       tags:
         - latest

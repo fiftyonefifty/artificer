@@ -1,5 +1,7 @@
 # Artificer
 
+[![Build Status](https://cloud.drone.io/api/badges/fiftyonefifty/artificer/status.svg?ref=refs/heads/master)](https://cloud.drone.io/fiftyonefifty/artificer)
+
 ![Artificer Logo](/assets/images/cover.png)
 
 Artificer is an OAuth2 token creator. Nothing more. Nothing less.
