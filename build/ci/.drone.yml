@@ -1,6 +1,10 @@
 kind: pipeline
 name: artificer
 
+platform:
+  os: linux
+  arch: amd64
+
 steps:
   - name: Build Container
     image: plugin/docker
