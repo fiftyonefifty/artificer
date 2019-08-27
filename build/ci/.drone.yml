@@ -9,7 +9,7 @@ steps:
   - name: Build Container
     image: plugin/docker
     settings:
-      dockerfile: ../package/Dockerfile
+      dockerfile: build/package/Dockerfile
       username:
         from_secret: docker_user
       password:
