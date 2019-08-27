@@ -9,7 +9,7 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o app .
 
 # Stage 2: Final Image
-FROM scratch
+FROM scratch as production
 WORKDIR /root/
 COPY --from=builder /build/app .
 # Serves up the UI portion of the web app.

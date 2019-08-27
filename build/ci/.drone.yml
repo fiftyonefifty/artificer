@@ -1,0 +1,15 @@
+kind: pipeline
+name: artificer
+
+steps:
+  - name: Build Container
+    image: plugin/docker
+    settings:
+      dockerfile: ../package/Dockerfile
+      username: test
+      password: test
+      repo: test
+      target: production
+      tags:
+        - latest
+        - "0.1.0"
