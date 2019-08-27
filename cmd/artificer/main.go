@@ -32,7 +32,8 @@ func main() {
 	// v1 := e.Group("/v1")
 	// v1Tokens := v1.Group("/tokens")
 	// v1Tokens.GET("/tokens", handlers)
-	// Start Server
+
+	// If you start me up, I'll never stop
 	e.Logger.Fatal(e.Start(":8000"))
 }
 
