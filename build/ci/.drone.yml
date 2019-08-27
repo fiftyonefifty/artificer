@@ -8,15 +8,12 @@ platform:
 steps:
   - name: Build Container
     image: plugin/docker
-    environment:
-      USERNAME:
-        from_secret: docker_user
-      PASSWORD:
-        from_secret: docker_pass
     settings:
       dockerfile: ../package/Dockerfile
-      username: $USERNAME
-      password: $PASSWORD
+      username:
+        from_secret: docker_user
+      password:
+        from_secret: docker_pass
       repo: 5150collective/artificer
       target: production
       tags:
