@@ -27,7 +27,8 @@ func main() {
 
 	// Route / to handler function
 	e.GET("/health", handlers.HealthCheck)
-
+	e.GET("/.well-known/openid-configuration", handlers.WellKnownOpenidConfiguration)
+	e.GET("/.well-known/openid-configuration/jwks", handlers.WellKnownOpenidConfigurationJwks)
 	// V1 Routes
 	// v1 := e.Group("/v1")
 	// v1Tokens := v1.Group("/tokens")
