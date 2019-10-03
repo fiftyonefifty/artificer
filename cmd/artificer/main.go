@@ -6,8 +6,16 @@ import (
 
 	echo "github.com/labstack/echo/v4"
 	middleware "github.com/labstack/echo/v4/middleware"
+	"github.com/spf13/viper"
 )
 
+func init() {
+	viper.SetConfigFile(`config/appsettings.json`)
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
+}
 func main() {
 	// Creating a new Echo instance.
 	e := echo.New()
