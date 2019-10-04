@@ -10,7 +10,6 @@ import (
 	"artificer/pkg/keyvault"
 
 	echo "github.com/labstack/echo/v4"
-	"github.com/spf13/viper"
 )
 
 // HealthCheck - Healthcheck Handler
@@ -21,20 +20,19 @@ func WellKnownOpenidConfigurationJwks(c echo.Context) error {
 	if err != nil {
 		log.Fatalf("failed to parse env: %v\n", err.Error())
 	}
-	E := viper.GetString("keyVault.clientId")
+	//E := viper.GetString("keyVault.clientId")
 
 	ctx := context.Background()
 	//defer resources.Cleanup(ctx)
-	a, err := keyvault.GetKeysVersion(ctx)
 
-	keyItem := a.Values()[0]
-
-	jwk := renderings.JwkResponse{}
-	jwk.Kty = config.ClientID()
-	jwk.Kid = *keyItem.Kid
-	jwk.E = E
+	activeKeys, err := keyvault.GetActiveKeysVersion(ctx)
 	resp := renderings.WellKnownOpenidConfigurationJwksResponse{}
-	resp.Keys = append(resp.Keys, jwk)
+
+	for _, element := range activeKeys {
+		jwk := renderings.JwkResponse{}
+		jwk.Kid = *element.Kid
+		resp.Keys = append(resp.Keys, jwk)
+	}
 
 	return c.JSON(http.StatusOK, resp)
 }
