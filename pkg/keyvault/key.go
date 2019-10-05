@@ -4,6 +4,8 @@ import (
 	"artificer/pkg/config"
 	"artificer/pkg/iam"
 	"context"
+	b64 "encoding/base64"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
@@ -24,15 +26,28 @@ func GetKeysVersion(ctx context.Context) (result keyvault.KeyListResultPage, err
 	result, err = keyClient.GetKeyVersions(ctx, "https://P7KeyValut.vault.azure.net/", "P7IdentityServer4SelfSigned", &maxResults)
 	return
 }
-func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyItem, err error) {
+func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyBundle, err error) {
+
+	// Length requirements defined by 2.2.2.9.1 RSA Private Key BLOB (https://msdn.microsoft.com/en-us/library/cc250013.aspx).
+	/*
+		PubExp (4 bytes): Length MUST be 4 bytes.
+
+		This field MUST be present as an unsigned integer in little-endian format.
+
+		The value of this field MUST be the RSA public key exponent for this key. The client SHOULD set this value to 65,537.
+
+		E is comming back as an Base64Url encoded byte[] of size 3.
+	*/
+
 	keyClient := getKeysClient()
+
 	var maxResults int32 = 10
 	pageResult, er := keyClient.GetKeyVersions(ctx,
 		"https://P7KeyValut.vault.azure.net/",
 		"P7IdentityServer4SelfSigned",
 		&maxResults)
 	if er != nil {
-		err = err
+		err = er
 		return
 	}
 
@@ -45,7 +60,21 @@ func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyItem, 
 			keyExpire = time.Time(*element.Attributes.Expires)
 
 			if keyExpire.After(utcNow) {
-				finalResult = append(finalResult, element)
+				parts := strings.Split(*element.Kid, "/")
+				lastItemVersion := parts[len(parts)-1]
+
+				keyBundle, er := keyClient.GetKey(ctx,
+					"https://P7KeyValut.vault.azure.net/",
+					"P7IdentityServer4SelfSigned",
+					lastItemVersion)
+				if er != nil {
+					err = er
+					return
+				}
+				fixedE := fixE(*keyBundle.Key.E)
+				*keyBundle.Key.E = fixedE
+
+				finalResult = append(finalResult, keyBundle)
 			}
 		}
 	}
@@ -53,7 +82,7 @@ func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyItem, 
 	for pageResult.NotDone() {
 		er = pageResult.Next()
 		if er != nil {
-			err = err
+			err = er
 			return
 		}
 		for _, element := range pageResult.Values() {
@@ -62,7 +91,20 @@ func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyItem, 
 				var keyExpire time.Time
 				keyExpire = time.Time(*element.Attributes.Expires)
 				if keyExpire.After(utcNow) {
-					finalResult = append(finalResult, element)
+					parts := strings.Split(*element.Kid, "/")
+					lastItemVersion := parts[len(parts)-1]
+
+					keyBundle, er := keyClient.GetKey(ctx,
+						"https://P7KeyValut.vault.azure.net/",
+						"P7IdentityServer4SelfSigned",
+						lastItemVersion)
+					if er != nil {
+						err = er
+						return
+					}
+					fixedE := fixE(*keyBundle.Key.E)
+					*keyBundle.Key.E = fixedE
+					finalResult = append(finalResult, keyBundle)
 				}
 			}
 		}
@@ -95,4 +137,25 @@ func CreateKey(ctx context.Context, vaultName, keyName string) (key keyvault.Key
 			},
 			Kty: keyvault.RSA,
 		})
+}
+
+func fixE(base64EncodedE string) string {
+	sDec, _ := b64.StdEncoding.DecodeString(base64EncodedE)
+	sDec = forceByteArrayLength(sDec, 4)
+	sEnc := b64.StdEncoding.EncodeToString(sDec)
+	parts := strings.Split(sEnc, "=")
+	sEnc = parts[0]
+	return sEnc
+}
+
+func forceByteArrayLength(slice []byte, requireLength int) []byte {
+	n := len(slice)
+	if n >= requireLength {
+		return slice
+	}
+	newSlice := make([]byte, requireLength)
+	offset := requireLength - n
+	copy(newSlice[offset:], slice)
+	slice = newSlice
+	return slice
 }

@@ -29,8 +29,14 @@ func WellKnownOpenidConfigurationJwks(c echo.Context) error {
 	resp := renderings.WellKnownOpenidConfigurationJwksResponse{}
 
 	for _, element := range activeKeys {
+
 		jwk := renderings.JwkResponse{}
-		jwk.Kid = *element.Kid
+		jwk.Kid = *element.Key.Kid
+		jwk.Kty = string(element.Key.Kty)
+		jwk.N = *element.Key.N
+		jwk.E = *element.Key.E
+		jwk.Alg = "RSA256"
+		jwk.Use = "sig"
 		resp.Keys = append(resp.Keys, jwk)
 	}
 
