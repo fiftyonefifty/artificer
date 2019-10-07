@@ -23,7 +23,6 @@ func WellKnownOpenidConfigurationJwks(c echo.Context) error {
 	//E := viper.GetString("keyVault.clientId")
 
 	ctx := context.Background()
-	//defer resources.Cleanup(ctx)
 
 	activeKeys, currentKeyBundle, err := keyvault.GetActiveKeysVersion(ctx)
 	fmt.Println(*currentKeyBundle.Key.Kid)

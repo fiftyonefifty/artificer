@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/spf13/viper"
 )
 
 func getKeysClient() keyvault.BaseClient {
@@ -40,12 +41,14 @@ func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyBundle
 		E is comming back as an Base64Url encoded byte[] of size 3.
 	*/
 
+	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")     //"https://P7KeyValut.vault.azure.net/"
+	keyIdentifier := viper.GetString("keyVault.KeyIdentifier") //"P7IdentityServer4SelfSigned"
 	keyClient := getKeysClient()
 
 	var maxResults int32 = 10
 	pageResult, err := keyClient.GetKeyVersions(ctx,
-		"https://P7KeyValut.vault.azure.net/",
-		"P7IdentityServer4SelfSigned",
+		keyVaultUrl,
+		keyIdentifier,
 		&maxResults)
 	if err != nil {
 		return
@@ -63,8 +66,8 @@ func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyBundle
 					lastItemVersion := parts[len(parts)-1]
 
 					keyBundle, er := keyClient.GetKey(ctx,
-						"https://P7KeyValut.vault.azure.net/",
-						"P7IdentityServer4SelfSigned",
+						keyVaultUrl,
+						keyIdentifier,
 						lastItemVersion)
 					if er != nil {
 						err = er
