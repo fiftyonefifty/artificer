@@ -5,6 +5,7 @@ import (
 	"artificer/pkg/iam"
 	"context"
 	b64 "encoding/base64"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,7 +27,7 @@ func GetKeysVersion(ctx context.Context) (result keyvault.KeyListResultPage, err
 	result, err = keyClient.GetKeyVersions(ctx, "https://P7KeyValut.vault.azure.net/", "P7IdentityServer4SelfSigned", &maxResults)
 	return
 }
-func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyBundle, err error) {
+func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyBundle, currentKeyBundle keyvault.KeyBundle, err error) {
 
 	// Length requirements defined by 2.2.2.9.1 RSA Private Key BLOB (https://msdn.microsoft.com/en-us/library/cc250013.aspx).
 	/*
@@ -42,49 +43,16 @@ func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyBundle
 	keyClient := getKeysClient()
 
 	var maxResults int32 = 10
-	pageResult, er := keyClient.GetKeyVersions(ctx,
+	pageResult, err := keyClient.GetKeyVersions(ctx,
 		"https://P7KeyValut.vault.azure.net/",
 		"P7IdentityServer4SelfSigned",
 		&maxResults)
-	if er != nil {
-		err = er
+	if err != nil {
 		return
 	}
 
 	utcNow := time.Now().UTC()
-
-	for _, element := range pageResult.Values() {
-		// element is the element from someSlice for where we are
-		if *element.Attributes.Enabled {
-			var keyExpire time.Time
-			keyExpire = time.Time(*element.Attributes.Expires)
-
-			if keyExpire.After(utcNow) {
-				parts := strings.Split(*element.Kid, "/")
-				lastItemVersion := parts[len(parts)-1]
-
-				keyBundle, er := keyClient.GetKey(ctx,
-					"https://P7KeyValut.vault.azure.net/",
-					"P7IdentityServer4SelfSigned",
-					lastItemVersion)
-				if er != nil {
-					err = er
-					return
-				}
-				fixedE := fixE(*keyBundle.Key.E)
-				*keyBundle.Key.E = fixedE
-
-				finalResult = append(finalResult, keyBundle)
-			}
-		}
-	}
-
-	for pageResult.NotDone() {
-		er = pageResult.Next()
-		if er != nil {
-			err = er
-			return
-		}
+	for {
 		for _, element := range pageResult.Values() {
 			// element is the element from someSlice for where we are
 			if *element.Attributes.Enabled {
@@ -107,6 +75,28 @@ func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyBundle
 					finalResult = append(finalResult, keyBundle)
 				}
 			}
+		}
+		if !pageResult.NotDone() {
+			break
+		}
+		err = pageResult.Next()
+		if err != nil {
+			return
+		}
+	}
+
+	sort.Slice(finalResult[:], func(i, j int) bool {
+		notBeforeA := time.Time(*finalResult[i].Attributes.NotBefore)
+		notBeforeB := time.Time(*finalResult[j].Attributes.NotBefore)
+
+		return notBeforeA.After(notBeforeB)
+	})
+
+	for _, element := range finalResult {
+		notVBefore := time.Time(*element.Attributes.NotBefore)
+		if notVBefore.Before(utcNow) {
+			currentKeyBundle = element
+			break
 		}
 	}
 	return

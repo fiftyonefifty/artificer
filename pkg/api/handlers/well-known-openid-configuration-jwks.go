@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"artificer/pkg/api/renderings"
-	"context"
-	"log"
-	"net/http"
-
 	"artificer/pkg/config"
 	"artificer/pkg/keyvault"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
 
 	echo "github.com/labstack/echo/v4"
 )
@@ -25,7 +25,8 @@ func WellKnownOpenidConfigurationJwks(c echo.Context) error {
 	ctx := context.Background()
 	//defer resources.Cleanup(ctx)
 
-	activeKeys, err := keyvault.GetActiveKeysVersion(ctx)
+	activeKeys, currentKeyBundle, err := keyvault.GetActiveKeysVersion(ctx)
+	fmt.Println(*currentKeyBundle.Key.Kid)
 	resp := renderings.WellKnownOpenidConfigurationJwksResponse{}
 
 	for _, element := range activeKeys {
