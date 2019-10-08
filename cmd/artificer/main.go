@@ -29,18 +29,17 @@ func main() {
 	e := echo.New()
 
 	firstAlive := make(chan bool, 1)
-	c := cron.New()
-	c.AddFunc("@every 1m", func() {
-		Alive()
-		firstAlive <- true
-	})
 	go func() {
-		time.Sleep(5 * time.Second)
-		Alive()
+		handlers.DoKeyvaultBackground()
 		firstAlive <- true
 	}()
-
+	c := cron.New()
+	c.AddFunc("@every 1m", func() {
+		handlers.DoKeyvaultBackground()
+		firstAlive <- true
+	})
 	c.Start()
+
 	// Configure Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())

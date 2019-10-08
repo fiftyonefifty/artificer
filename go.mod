@@ -38,7 +38,9 @@ require (
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
+	github.com/pascaldekloe/jwt v1.6.0
 	github.com/pelletier/go-toml v1.4.0 // indirect
+	github.com/pmylund/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.1.0 // indirect
 	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
 	github.com/prometheus/common v0.7.0 // indirect
@@ -52,6 +54,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.4.0
+	github.com/square/go-jose/v3 v3.0.0-20190919032641-a5f6a9478937 // indirect
 	github.com/tkanos/gonfig v0.0.0-20181112185242-896f3d81fadf // indirect
 	github.com/ugorji/go v1.1.7 // indirect
 	go.etcd.io/bbolt v1.3.3 // indirect
@@ -72,5 +75,6 @@ require (
 	google.golang.org/genproto v0.0.0-20191002211648-c459b9ce5143 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/square/go-jose.v2 v2.3.1
 	gopkg.in/yaml.v2 v2.2.4 // indirect
 )

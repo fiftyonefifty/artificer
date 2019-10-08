@@ -4,6 +4,7 @@ import (
 	"artificer/pkg/config"
 	"artificer/pkg/iam"
 	"context"
+	"crypto"
 	b64 "encoding/base64"
 	"sort"
 	"strings"
@@ -28,6 +29,24 @@ func GetKeysVersion(ctx context.Context) (result keyvault.KeyListResultPage, err
 	result, err = keyClient.GetKeyVersions(ctx, "https://P7KeyValut.vault.azure.net/", "P7IdentityServer4SelfSigned", &maxResults)
 	return
 }
+
+func RSA256AzureSign(ctx context.Context, data []byte) (kid *string, signature *string, err error) {
+	keyClient := getKeysClient()
+	digest := crypto.SHA256.New()
+	digest.Write(data)
+	h := digest.Sum(nil)
+	sEnc := b64.StdEncoding.EncodeToString(h)
+
+	keyOperationResult, err := keyClient.Sign(ctx, "https://P7KeyValut.vault.azure.net/", "P7IdentityServer4SelfSigned", "", keyvault.KeySignParameters{
+		Algorithm: keyvault.RS256,
+		Value:     &sEnc,
+	})
+	if err != nil {
+		return
+	}
+	return keyOperationResult.Kid, keyOperationResult.Result, nil
+}
+
 func GetActiveKeysVersion(ctx context.Context) (finalResult []keyvault.KeyBundle, currentKeyBundle keyvault.KeyBundle, err error) {
 
 	// Length requirements defined by 2.2.2.9.1 RSA Private Key BLOB (https://msdn.microsoft.com/en-us/library/cc250013.aspx).
