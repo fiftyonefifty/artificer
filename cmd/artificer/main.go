@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
+	"log"
+	"github.com/robfig/cron/v3"
 	echo "github.com/labstack/echo/v4"
 	middleware "github.com/labstack/echo/v4/middleware"
-	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
+	"artificer/pkg/config"
 )
 
 func init() {
@@ -25,21 +26,31 @@ func Alive() {
 	fmt.Println(fmt.Sprintf("Alive:%s", now))
 }
 func main() {
+
+	var err error
+	err = config.ParseEnvironment()
+	if err != nil {
+		log.Fatalf("failed to parse env: %v\n", err.Error())
+	}
+
 	// Creating a new Echo instance.
 	e := echo.New()
 
 	firstAlive := make(chan bool, 1)
+
 	go func() {
 		handlers.DoKeyvaultBackground()
 		firstAlive <- true
 	}()
+
+	
 	c := cron.New()
-	c.AddFunc("@every 1m", func() {
+	c.AddFunc("@every 5min", func() {
 		handlers.DoKeyvaultBackground()
 		firstAlive <- true
 	})
 	c.Start()
-
+	
 	// Configure Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
