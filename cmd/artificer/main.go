@@ -90,7 +90,7 @@ func main() {
 
 	<-firstAlive
 	// If you start me up, I'll never stop
-	e.Logger.Fatal(e.Start(":8000"))
+	e.Logger.Fatal(e.Start(":9000"))
 }
 
 // Handler

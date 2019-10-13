@@ -5,13 +5,18 @@ import (
 	"artificer/pkg/util"
 	"fmt"
 	"net/http"
+	"time"
 
 	echo "github.com/labstack/echo/v4"
+	gocache "github.com/pmylund/go-cache"
 )
 
-// HealthCheck - Healthcheck Handler
-func WellKnownOpenidConfiguration(c echo.Context) error {
+var (
+	cache    = gocache.New(24*time.Hour, time.Hour)
+	cacheKey = "64e3422b-c321-4c4a-b03e-66c92f6f53b5"
+)
 
+func buildCachedResponse(c echo.Context) {
 	issuer := util.GetBaseUrl(c)
 
 	jwks_uri := fmt.Sprintf("%s/.well-known/openid-configuration/jwks", issuer)
@@ -24,7 +29,7 @@ func WellKnownOpenidConfiguration(c echo.Context) error {
 	introspection_endpoint := fmt.Sprintf("%s/connect/introspect", issuer)
 	device_authorization_endpoint := fmt.Sprintf("%s/connect/deviceauthorization", issuer)
 
-	resp := renderings.WellKnownOpenidConfigurationResponse{
+	cacheItem := renderings.WellKnownOpenidConfigurationResponse{
 		Issuer:                             issuer,
 		JwksURI:                            jwks_uri,
 		AuthorizationEndpoint:              authorization_endpoint,
@@ -40,6 +45,21 @@ func WellKnownOpenidConfiguration(c echo.Context) error {
 		BackchannelLogoutSupported:         false,
 		BackchannelLogoutSessionSupported:  false,
 	}
+	cache.Set(cacheKey, cacheItem, gocache.NoExpiration)
+}
+
+// HealthCheck - Healthcheck Handler
+func WellKnownOpenidConfiguration(c echo.Context) error {
+
+	var cachedItem interface{}
+	var found bool
+
+	cachedItem, found = cache.Get(cacheKey)
+	if !found {
+		buildCachedResponse(c)
+		cachedItem, found = cache.Get(cacheKey)
+	}
+	resp := cachedItem.(renderings.WellKnownOpenidConfigurationResponse)
 
 	return c.JSON(http.StatusOK, resp)
 }
