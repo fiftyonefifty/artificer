@@ -1,0 +1,41 @@
+{
+	"clients": [{
+		"enabled": true,
+		"clientId": "test-client",
+		"clientName": "test-clientName",
+		"description": "test-description",
+		"namespace": "test-namespace",
+		"requireRefreshClientSecret": true,
+		"allowOfflineAccess": true,
+		"updateAccessTokenClaimsOnRefresh": true,
+		"includeJwtId": true,
+		"alwaysSendClientClaims": true,
+		"alwaysIncludeUserClaimsInIdToken": true,
+		"requireClientSecret": true,
+		"accessTokenLifetime": 3600,
+		"absoluteRefreshTokenLifetime": 3600,
+		"slidingRefreshTokenLifetime": 900,
+		"identityTokenLifetime": 2600000,
+		"refreshTokenUsage": 1,
+		"refreshTokenExpiration": 1,
+		"accessTokenType": 0,
+		"claims": [{
+			"type": "role",
+			"value": "admin"
+		}, {
+			"type": "role",
+			"value": "dog-owner"
+		}],
+		"allowedScopes": ["a", "b", "c"],
+		"allowedGrantTypes": [
+			"client_credentials",
+			"arbitrary_resource_owner",
+			"arbitrary_no_subject",
+			"arbitrary_identity"
+		],
+		"clientSecrets": [{
+			"expiration": 1604102400,
+			"value": "2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b"
+		}]
+	}]
+}

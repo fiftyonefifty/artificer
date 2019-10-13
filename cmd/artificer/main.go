@@ -17,11 +17,12 @@ import (
 )
 
 func init() {
-	viper.SetConfigFile(`config/appsettings.json`)
+	viper.SetConfigFile("config/appsettings.json")
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(err)
 	}
+	config.LoadClientConfig()
 }
 
 func Alive() {
