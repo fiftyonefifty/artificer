@@ -2,15 +2,18 @@ package main
 
 import (
 	"artificer/pkg/api/handlers"
+	"artificer/pkg/config"
+	"artificer/pkg/keyvault"
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
-	"log"
-	"github.com/robfig/cron/v3"
+
 	echo "github.com/labstack/echo/v4"
 	middleware "github.com/labstack/echo/v4/middleware"
+	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
-	"artificer/pkg/config"
 )
 
 func init() {
@@ -39,18 +42,25 @@ func main() {
 	firstAlive := make(chan bool, 1)
 
 	go func() {
-		handlers.DoKeyvaultBackground()
+		keyvault.DoKeyvaultBackground()
 		firstAlive <- true
 	}()
+	go func() {
+		ctx := context.Background()
+		keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")
+		keyvault.CreateKey(ctx, keyVaultUrl, "test")
 
-	
+	}()
+
 	c := cron.New()
-	c.AddFunc("@every 5min", func() {
-		handlers.DoKeyvaultBackground()
+	cronSpec := viper.GetString("keyVault.cronSpec") // i.e. "@every 10s"
+
+	c.AddFunc(cronSpec, func() {
+		keyvault.DoKeyvaultBackground()
 		firstAlive <- true
 	})
 	c.Start()
-	
+
 	// Configure Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -68,6 +78,8 @@ func main() {
 	e.GET("/health", handlers.HealthCheck)
 	e.GET("/.well-known/openid-configuration", handlers.WellKnownOpenidConfiguration)
 	e.GET("/.well-known/openid-configuration/jwks", handlers.WellKnownOpenidConfigurationJwks)
+	e.GET("/mint-test-token", handlers.MintTestToken)
+
 	// V1 Routes
 	// v1 := e.Group("/v1")
 	// v1Tokens := v1.Group("/tokens")

@@ -19,6 +19,7 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/creack/pty v1.1.9 // indirect
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-openapi/runtime v0.19.4
 	github.com/gobuffalo/envy v1.7.1
 	github.com/gogo/protobuf v1.3.0 // indirect
@@ -38,7 +39,7 @@ require (
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
-	github.com/pascaldekloe/jwt v1.6.0
+	github.com/pascaldekloe/jwt v1.6.1-0.20191011205700-9118cfd8bc6d
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/pmylund/go-cache v2.1.0+incompatible
 	github.com/prometheus/client_golang v1.1.0 // indirect

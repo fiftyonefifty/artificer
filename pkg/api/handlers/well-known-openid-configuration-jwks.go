@@ -1,65 +1,43 @@
 package handlers
 
 import (
-	"artificer/pkg/api/renderings"
 	"artificer/pkg/keyvault"
-	"context"
-	"fmt"
-	"log"
+	"artificer/pkg/util"
 	"net/http"
+
 	"time"
 
 	echo "github.com/labstack/echo/v4"
-	gocache "github.com/pmylund/go-cache"
+	"github.com/pascaldekloe/jwt"
 )
 
-var (
-	cache    = gocache.New(24*time.Hour, time.Hour)
-	cacheKey = "85b75fb0-f120-4bfb-a0fe-f017cc72e41f"
-)
-
-func DoKeyvaultBackground() (err error) {
-	now := time.Now().UTC()
-	fmt.Println(fmt.Sprintf("Start-DoKeyvaultBackground:%s", now))
-	ctx := context.Background()
-	activeKeys, _, err := keyvault.GetActiveKeysVersion(ctx)
+func WellKnownOpenidConfigurationJwks(c echo.Context) (err error) {
+	cachedItem, err := keyvault.GetCachedKeyVersions()
 	if err != nil {
 		return
 	}
-	resp := renderings.WellKnownOpenidConfigurationJwksResponse{}
-
-	for _, element := range activeKeys {
-
-		jwk := renderings.JwkResponse{}
-		jwk.Kid = *element.Key.Kid
-		jwk.Kty = string(element.Key.Kty)
-		jwk.N = *element.Key.N
-		jwk.E = *element.Key.E
-		jwk.Alg = "RSA256"
-		jwk.Use = "sig"
-		resp.Keys = append(resp.Keys, jwk)
-	}
-	cache.Set(cacheKey, resp, gocache.NoExpiration)
-	fmt.Println(fmt.Sprintf("Success-DoKeyvaultBackground:%s", now))
-	return
+	return c.JSON(http.StatusOK, cachedItem.WellKnownOpenidConfigurationJwksResponse)
 }
 
-// HealthCheck - Healthcheck Handler
-func WellKnownOpenidConfigurationJwks(c echo.Context) error {
+func MintTestToken(c echo.Context) (err error) {
+	utcNow := time.Now().UTC()
+	utcExpires := utcNow.Add(time.Minute * 31)
+	utcNotBefore := utcNow.Add(time.Minute * 1)
 
-	cachedResponse, found := cache.Get(cacheKey)
-	if !found {
-		err := DoKeyvaultBackground()
-		if err != nil {
-			log.Fatalf("failed to DoKeyvaultBackground: %v\n", err.Error())
-			return c.JSON(http.StatusBadRequest, nil)
-		}
-		cachedResponse, found = cache.Get(cacheKey)
-		if !found {
-			log.Fatalf("critical failure to DoKeyvaultBackground:\n")
-			return c.JSON(http.StatusBadRequest, nil)
-		}
+	claims := jwt.Claims{
+		// cover all registered fields
+		Registered: jwt.Registered{
+			Subject:   "b",
+			Audiences: []string{"c"},
+			ID:        "d",
+		},
+		Set: make(map[string]interface{}),
 	}
+	claims.Set["pirate"] = "jack"
+	claims.Set["primes"] = []int{2, 3, 5, 7, 11, 13}
+	claims.Set["roles"] = []string{"admin", "super-duper"}
 
-	return c.JSON(http.StatusOK, cachedResponse)
+	token, err := util.MintToken(c, claims, &utcNotBefore, &utcExpires)
+
+	return c.JSON(http.StatusOK, token)
 }

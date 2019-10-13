@@ -18,7 +18,7 @@ func ParseEnvironment() error {
 
 	// AZURE_GROUP_NAME and `config.GroupName()` are deprecated.
 	// Use AZURE_BASE_GROUP_NAME and `config.GenerateGroupName()` instead.
-	groupName = envy.Get("AZURE_GROUP_NAME", "azure-go-samples")
+	groupName = envy.Get("AZURE_GROUP_NAME", "cct-test-resource")
 	baseGroupName = envy.Get("AZURE_BASE_GROUP_NAME", groupName)
 
 	locationDefault = envy.Get("AZURE_LOCATION_DEFAULT", "westus2")
