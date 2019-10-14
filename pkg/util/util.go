@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"strings"
 )
 
 // PrintAndLog writes to stdout and to a logger.
@@ -15,8 +16,19 @@ func PrintAndLog(message string) {
 	fmt.Println(message)
 }
 
-func Contains(array []string, element string) bool {
-	for _, e := range array {
+func FilterOutStringElement(a *[]string, element string) {
+	n := 0
+	for _, x := range *a {
+		if !strings.EqualFold(x, element) {
+			(*a)[n] = x
+			n++
+		}
+	}
+	*a = (*a)[:n]
+}
+
+func Contains(array *[]string, element string) bool {
+	for _, e := range *array {
 		if e == element {
 			return true
 		}

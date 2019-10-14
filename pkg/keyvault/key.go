@@ -76,6 +76,11 @@ func MintToken(c echo.Context, claims jwt.Claims, notBefore *time.Time, expires 
 	claims.KeyID = cachedItem.CurrentVersionId
 	claims.Issuer = baseUrl
 
+	if claims.Audiences == nil {
+		claims.Audiences = []string{}
+	}
+	claims.Audiences = append(claims.Audiences, claims.Issuer)
+
 	keyClient, err := GetKeyClient()
 	if err != nil {
 		return

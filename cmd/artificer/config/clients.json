@@ -20,13 +20,19 @@
 		"refreshTokenExpiration": 1,
 		"accessTokenType": 0,
 		"claims": [{
+			"type": "artificer-ns",
+			"value": "private namespace"
+		},{
 			"type": "role",
 			"value": "admin"
 		}, {
 			"type": "role",
 			"value": "dog-owner"
+		}, {
+			"type": "scope",
+			"value": "rock-climber"
 		}],
-		"allowedScopes": ["a", "b", "c"],
+		"allowedScopes": ["artificer-ns","a", "b", "c"],
 		"allowedGrantTypes": [
 			"client_credentials",
 			"arbitrary_resource_owner",

@@ -2,6 +2,7 @@ package config
 
 import (
 	"artificer/pkg/api/models"
+	"artificer/pkg/util"
 
 	"sort"
 
@@ -27,5 +28,6 @@ func LoadClientConfig() {
 		ClientMap[v.ClientID] = &v
 		sort.Strings(v.AllowedGrantTypes)
 		sort.Strings(v.AllowedScopes)
+		util.FilterOutStringElement(&v.AllowedScopes, "artificer-ns")
 	}
 }

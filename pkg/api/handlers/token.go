@@ -4,28 +4,12 @@ import (
 	"artificer/pkg/api/models"
 	"artificer/pkg/api/renderings"
 	"artificer/pkg/config"
-	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
-	"time"
 
 	echo "github.com/labstack/echo/v4"
-	"github.com/pascaldekloe/jwt"
-)
-
-type (
-	TokenRequest struct {
-		ClientID     string `json:"client_id" form:"client_id" query:"client_id"`
-		ClientSecret string `json:"client_secret" form:"client_secret" query:"client_secret"`
-		GrantType    string `json:"grant_type" form:"grant_type" query:"grant_type"`
-	}
-	ClientCredentialsRequest struct {
-		TokenRequest
-		Scope string `json:"scope" form:"scope" query:"scope"`
-	}
 )
 
 func validateClient(req *TokenRequest) (err error) {
@@ -97,66 +81,6 @@ func TokenEndpoint(c echo.Context) (err error) {
 	}
 	resp := renderings.HealthCheckResponse{
 		Status: "Should Never See this",
-	}
-	return c.JSON(http.StatusOK, resp)
-}
-func handleClientCredentialsFlow(c echo.Context) error {
-	req := &ClientCredentialsRequest{}
-	if err := c.Bind(req); err != nil {
-		return err
-	}
-	var client *models.Client
-	client = config.ClientMap[req.ClientID]
-
-	scope := strings.TrimSpace(req.Scope)
-
-	var allowedScopes []string
-	if len(scope) == 0 {
-		// OK, since scope is optional
-		// by spec if nothing is asked for all is returned.
-		allowedScopes = client.AllowedScopes
-	} else {
-		// this one gets weird, if you ask for something and that something doesn't exit you get NOTHING
-		// which is odd, because asking for nothing gets you everything as can be seen if scope request is empty
-		splitScopes := strings.Split(scope, " ")
-		allowedScopes = util.IntersectionStringArray(splitScopes, client.AllowedScopes)
-	}
-
-	utcNow := time.Now().UTC().Truncate(time.Minute)
-	utcExpires := utcNow.Add(time.Second * time.Duration(client.AccessTokenLifetime))
-	utcNotBefore := utcNow
-
-	claims := jwt.Claims{
-		// cover all registered fields
-		Registered: jwt.Registered{
-			Audiences: allowedScopes,
-		},
-		Set: make(map[string]interface{}),
-	}
-	claims.Set["scope"] = allowedScopes
-	claims.Set["client_id"] = client.ClientID
-	/*
-		tmpMap := make(map[string][]string)
-			if client.AlwaysSendClientClaims {
-				for _, element := range client.Claims {
-					if element.Type == "scope" {
-						continue
-					}
-					if tmpMap[element.Type] == nil {
-						tmpMap[element.Type] = []string{}
-					}
-					append(tmpMap[element.Type], element.Value)
-				}
-			}
-	*/
-
-	token, err := keyvault.MintToken(c, claims, &utcNotBefore, &utcExpires)
-	if err != nil {
-		return err
-	}
-
-	resp := renderings.HealthCheckResponse{
-		Status: fmt.Sprintf("UP: %s", token),
 	}
 	return c.JSON(http.StatusOK, resp)
 }
