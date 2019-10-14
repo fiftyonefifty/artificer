@@ -1,7 +1,7 @@
 {
 	"clients": [{
 		"enabled": true,
-		"clientId": "test-client",
+		"clientId": "b2b-client",
 		"clientName": "test-clientName",
 		"description": "test-description",
 		"namespace": "test-namespace",
@@ -35,7 +35,7 @@
 		],
 		"clientSecrets": [{
 			"expiration": 1604102400,
-			"value": "2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b"
+			"value": "K7gNU3sdo+OL0wNhqoVWhr3g6s1xYv72ol/pe/Unols="
 		}]
 	}]
 }

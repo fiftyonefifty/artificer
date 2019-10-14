@@ -3,12 +3,15 @@ package config
 import (
 	"artificer/pkg/api/models"
 
+	"sort"
+
 	"github.com/spf13/viper"
 )
 
 var (
 	ClientsConfig *viper.Viper
 	Clients       []models.Client
+	ClientMap     = make(map[string]*models.Client)
 )
 
 func LoadClientConfig() {
@@ -20,4 +23,9 @@ func LoadClientConfig() {
 		panic(err)
 	}
 	ClientsConfig.UnmarshalKey("clients", &Clients)
+	for _, v := range Clients {
+		ClientMap[v.ClientID] = &v
+		sort.Strings(v.AllowedGrantTypes)
+		sort.Strings(v.AllowedScopes)
+	}
 }

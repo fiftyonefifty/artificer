@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"artificer/pkg/keyvault"
-	"artificer/pkg/util"
 	"net/http"
 
 	"time"
@@ -20,15 +19,15 @@ func WellKnownOpenidConfigurationJwks(c echo.Context) (err error) {
 }
 
 func MintTestToken(c echo.Context) (err error) {
-	utcNow := time.Now().UTC()
+	utcNow := time.Now().UTC().Truncate(time.Minute)
 	utcExpires := utcNow.Add(time.Minute * 31)
 	utcNotBefore := utcNow.Add(time.Minute * 1)
 
 	claims := jwt.Claims{
 		// cover all registered fields
 		Registered: jwt.Registered{
-			Subject:   "b",
-			Audiences: []string{"c"},
+			//	Subject:   "b",
+			Audiences: []string{"aud1", "aud2"},
 			ID:        "d",
 		},
 		Set: make(map[string]interface{}),
@@ -36,8 +35,8 @@ func MintTestToken(c echo.Context) (err error) {
 	claims.Set["pirate"] = "jack"
 	claims.Set["primes"] = []int{2, 3, 5, 7, 11, 13}
 	claims.Set["roles"] = []string{"admin", "super-duper"}
-
-	token, err := util.MintToken(c, claims, &utcNotBefore, &utcExpires)
+	claims.Set["scope"] = []string{"aud1", "aud2"}
+	token, err := keyvault.MintToken(c, claims, &utcNotBefore, &utcExpires)
 
 	return c.JSON(http.StatusOK, token)
 }

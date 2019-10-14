@@ -1,6 +1,8 @@
 package util
 
 import (
+	"crypto"
+	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -20,6 +22,17 @@ func Contains(array []string, element string) bool {
 		}
 	}
 	return false
+}
+func StringSha256Encode64(value string) string {
+	return ByteArraySha256Encode64([]byte(value))
+}
+
+func ByteArraySha256Encode64(value []byte) string {
+	digest := crypto.SHA256.New()
+	digest.Write(value)
+	h := digest.Sum(nil)
+	sEnc := b64.StdEncoding.EncodeToString(h)
+	return sEnc
 }
 
 // ReadJSON reads a json file, and unmashals it.

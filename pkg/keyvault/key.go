@@ -4,8 +4,8 @@ import (
 	"artificer/pkg/api/renderings"
 	"artificer/pkg/config"
 	"artificer/pkg/iam"
+	"artificer/pkg/util"
 	"context"
-	"crypto"
 	b64 "encoding/base64"
 	"errors"
 	"fmt"
@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	azKeyvault "github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	"github.com/Azure/go-autorest/autorest/to"
+	echo "github.com/labstack/echo/v4"
 	"github.com/pascaldekloe/jwt"
 	gocache "github.com/pmylund/go-cache"
 	"github.com/spf13/viper"
@@ -53,12 +54,48 @@ func GetKeysVersion(ctx context.Context) (result azKeyvault.KeyListResultPage, e
 	return
 }
 
+func MintToken(c echo.Context, claims jwt.Claims, notBefore *time.Time, expires *time.Time) (token string, err error) {
+	cachedItem, err := GetCachedKeyVersions()
+	if err != nil {
+		return
+	}
+
+	baseUrl := util.GetBaseUrl(c)
+
+	utcNow := time.Now().UTC().Truncate(time.Minute)
+	if notBefore == nil {
+		notBefore = &utcNow
+	}
+	claims.Issued = jwt.NewNumericTime(utcNow)
+	claims.NotBefore = jwt.NewNumericTime(*notBefore)
+	if expires == nil {
+		claims.Expires = nil
+	} else {
+		claims.Expires = jwt.NewNumericTime(*expires)
+	}
+	claims.KeyID = cachedItem.CurrentVersionId
+	claims.Issuer = baseUrl
+
+	keyClient, err := GetKeyClient()
+	if err != nil {
+		return
+	}
+	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")     //"https://P7KeyValut.vault.azure.net/"
+	keyIdentifier := viper.GetString("keyVault.KeyIdentifier") //"P7IdentityServer4SelfSigned"
+	ctx := context.Background()
+
+	byteToken, err := keyClient.Sign2(ctx, &claims, azKeyvault.RS256, keyVaultUrl, keyIdentifier, claims.KeyID)
+	if err != nil {
+		return
+	}
+	token = string(byteToken)
+
+	return
+}
 func RSA256AzureSign(ctx context.Context, data []byte) (kid *string, signature *string, err error) {
 	keyClient := getKeysClient()
-	digest := crypto.SHA256.New()
-	digest.Write(data)
-	h := digest.Sum(nil)
-	sEnc := b64.StdEncoding.EncodeToString(h)
+
+	sEnc := util.ByteArraySha256Encode64(data)
 
 	keyOperationResult, err := keyClient.Sign(ctx, "https://P7KeyValut.vault.azure.net/", "P7IdentityServer4SelfSigned", "", keyvault.KeySignParameters{
 		Algorithm: azKeyvault.RS256,
@@ -82,10 +119,7 @@ func (keyClient *BaseClient2) Sign2(
 	if err != nil {
 		return nil, err
 	}
-	digest := crypto.SHA256.New()
-	digest.Write(tokenWithoutSignature)
-	h := digest.Sum(nil)
-	sEnc := b64.StdEncoding.EncodeToString(h)
+	sEnc := util.ByteArraySha256Encode64(tokenWithoutSignature)
 
 	keyOperationResult, err := keyClient.Sign(ctx, vaultBaseURL, keyName, keyVersion, azKeyvault.KeySignParameters{
 		Algorithm: alg,

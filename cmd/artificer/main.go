@@ -80,6 +80,7 @@ func main() {
 	e.GET("/.well-known/openid-configuration", handlers.WellKnownOpenidConfiguration)
 	e.GET("/.well-known/openid-configuration/jwks", handlers.WellKnownOpenidConfigurationJwks)
 	e.GET("/mint-test-token", handlers.MintTestToken)
+	e.POST("/connect/token", handlers.TokenEndpoint)
 
 	// V1 Routes
 	// v1 := e.Group("/v1")
