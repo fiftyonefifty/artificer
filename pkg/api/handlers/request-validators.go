@@ -14,6 +14,12 @@ import (
 
 func validateArbitraryNoSubjectRequest(req *ArbitraryNoSubjectRequest) (err error) {
 
+	if !json.Valid([]byte(req.CustomPayload)) {
+		err = errors.New("custom_payload: is not a valid json")
+		fmt.Println(err.Error())
+		return
+	}
+
 	schemaLoader := gojsonschema.NewStringLoader(`{
 		"$schema": "http://json-schema.org/draft-04/schema#",
 		"type": "object",

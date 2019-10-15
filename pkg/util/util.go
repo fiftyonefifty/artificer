@@ -36,6 +36,8 @@ func InterfaceArrayToStringArray(source interface{}) (err error, result []string
 			s := u.(string)
 			result = append(result, s)
 		}
+	case []string:
+		result = source.([]string)
 	default:
 		err = errors.New("Not an array")
 	}

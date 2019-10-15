@@ -16,6 +16,7 @@ type (
 		ArbitraryClaims     string `json:"arbitrary_claims" form:"arbitrary_claims" query:"arbitrary_claims"`
 		ArbitraryAmrs       string `json:"arbitrary_amrs" form:"arbitrary_amrs" query:"arbitrary_amrs"`
 		ArbitraryAudiences  string `json:"arbitrary_audiences" form:"arbitrary_audiences" query:"arbitrary_audiences"`
+		CustomPayload       string `json:"custom_payload" form:"custom_payload" query:"custom_payload"`
 		AccessTokenLifetime int    `json:"access_token_lifetime" form:"access_token_lifetime" query:"access_token_lifetime"`
 	}
 
