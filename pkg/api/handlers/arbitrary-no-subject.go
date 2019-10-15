@@ -52,11 +52,19 @@ func handleArbitraryNoSubjectFlow(c echo.Context) error {
 
 	claims := jwt.Claims{
 		// cover all registered fields
-		Registered: jwt.Registered{
-			//	Audiences: allowedScopes,
-		},
-		Set: objmap,
+		Registered: jwt.Registered{},
+		Set:        objmap,
 	}
+	if len(req.ArbitraryAudiences) > 0 {
+		var arbAud []string
+
+		err := json.Unmarshal([]byte(req.ArbitraryAudiences), &arbAud)
+		if err != nil {
+			return err
+		}
+		claims.Audiences = arbAud
+	}
+
 	for key, element := range claims.Set {
 		err, sArr := util.InterfaceArrayToStringArray(element)
 		if err != nil {
@@ -89,6 +97,23 @@ func handleArbitraryNoSubjectFlow(c echo.Context) error {
 			}
 			break
 		}
+	}
+	if len(req.ArbitraryAmrs) > 0 {
+		var arbAmrs []string
+
+		err := json.Unmarshal([]byte(req.ArbitraryAmrs), &arbAmrs)
+		if err != nil {
+			return err
+		}
+		claims.Set["amr"] = arbAmrs
+	}
+	if len(req.CustomPayload) > 0 {
+		var objmap interface{}
+		err := json.Unmarshal([]byte(req.CustomPayload), &objmap)
+		if err != nil {
+			return err
+		}
+		claims.Set["custom_payload"] = objmap
 	}
 
 	token, err := keyvault.MintToken(c, claims, &utcNotBefore, &utcExpires)
