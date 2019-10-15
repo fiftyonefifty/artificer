@@ -1,5 +1,9 @@
 package models
 
+const (
+	NAMESPACE_NAME string = "artificer-ns"
+)
+
 type TokenUsage int
 
 const (
@@ -52,6 +56,7 @@ type Client struct {
 	AlwaysIncludeUserClaimsInIdToken bool            `json:alwaysIncludeUserClaimsInIdToken`
 	AllowedScopes                    []string        `json:allowedScopes`
 	AllowedGrantTypes                []string        `json:allowedGrantTypes`
-	RequireClientSecret              bool            `json:requireClientSecret`
-	ClientSecrets                    []Secret        `json:clientSecrets`
+	AllowedGrantTypesMap             map[string]interface{}
+	RequireClientSecret              bool     `json:requireClientSecret`
+	ClientSecrets                    []Secret `json:clientSecrets`
 }

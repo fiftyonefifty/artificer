@@ -29,5 +29,9 @@ func LoadClientConfig() {
 		sort.Strings(v.AllowedGrantTypes)
 		sort.Strings(v.AllowedScopes)
 		util.FilterOutStringElement(&v.AllowedScopes, "artificer-ns")
+		v.AllowedGrantTypesMap = make(map[string]interface{})
+		for _, agt := range v.AllowedGrantTypes {
+			v.AllowedGrantTypesMap[agt] = ""
+		}
 	}
 }

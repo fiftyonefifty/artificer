@@ -4,6 +4,7 @@ import (
 	"crypto"
 	b64 "encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -27,10 +28,29 @@ func FilterOutStringElement(a *[]string, element string) {
 	*a = (*a)[:n]
 }
 
-func Contains(array *[]string, element string) bool {
+func InterfaceArrayToStringArray(source interface{}) (err error, result []string) {
+	switch vv := source.(type) {
+	case []interface{}:
+		result = []string{}
+		for _, u := range vv {
+			result = append(result, u.(string))
+		}
+	default:
+		err = errors.New("Not an array")
+	}
+	return
+}
+
+func Contains(array *[]string, element string, noCase bool) bool {
 	for _, e := range *array {
-		if e == element {
-			return true
+		if noCase {
+			if strings.EqualFold(e, element) {
+				return true
+			}
+		} else {
+			if e == element {
+				return true
+			}
 		}
 	}
 	return false

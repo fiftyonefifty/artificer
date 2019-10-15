@@ -58,6 +58,8 @@ require (
 	github.com/square/go-jose/v3 v3.0.0-20190919032641-a5f6a9478937 // indirect
 	github.com/tkanos/gonfig v0.0.0-20181112185242-896f3d81fadf // indirect
 	github.com/ugorji/go v1.1.7 // indirect
+	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
+	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.3 // indirect
 	go.opencensus.io v0.22.1 // indirect
 	go.uber.org/multierr v1.2.0 // indirect

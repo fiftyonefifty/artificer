@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"artificer/pkg/api/models"
-	"artificer/pkg/api/renderings"
 	"artificer/pkg/config"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -84,8 +82,10 @@ func handleClientCredentialsFlow(c echo.Context) error {
 		return err
 	}
 
-	resp := renderings.HealthCheckResponse{
-		Status: fmt.Sprintf("UP: %s", token),
+	resp := ClientCredentialsResponse{
+		AccessToken: token,
+		ExpiresIn:   client.AccessTokenLifetime,
+		TokenType:   "Bearer",
 	}
 	return c.JSON(http.StatusOK, resp)
 }
