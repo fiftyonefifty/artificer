@@ -33,7 +33,8 @@ func InterfaceArrayToStringArray(source interface{}) (err error, result []string
 	case []interface{}:
 		result = []string{}
 		for _, u := range vv {
-			result = append(result, u.(string))
+			s := u.(string)
+			result = append(result, s)
 		}
 	default:
 		err = errors.New("Not an array")

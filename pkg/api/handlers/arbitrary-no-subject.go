@@ -57,6 +57,14 @@ func handleArbitraryNoSubjectFlow(c echo.Context) error {
 		},
 		Set: objmap,
 	}
+	for key, element := range claims.Set {
+		err, sArr := util.InterfaceArrayToStringArray(element)
+		if err != nil {
+			return err
+		}
+		delete(claims.Set, key)
+		claims.Set[key] = sArr
+	}
 
 	claims.Set["client_id"] = client.ClientID
 
@@ -70,9 +78,6 @@ func handleArbitraryNoSubjectFlow(c echo.Context) error {
 			set = append(set, element.Value)
 			claims.Set[element.Type] = set
 		}
-	}
-	if claims.Set["scope"] != nil {
-		claims.Registered.Audiences = claims.Set["scope"].([]string)
 	}
 
 	for key, element := range claims.Set {
