@@ -1,0 +1,368 @@
+package keyvault
+
+import (
+	"artificer/pkg/api/renderings"
+	"artificer/pkg/config"
+	"artificer/pkg/iam"
+	"artificer/pkg/util"
+	"context"
+	b64 "encoding/base64"
+	"errors"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"log"
+
+	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
+	azKeyvault "github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
+	"github.com/Azure/go-autorest/autorest/to"
+	echo "github.com/labstack/echo/v4"
+	"github.com/pascaldekloe/jwt"
+	gocache "github.com/pmylund/go-cache"
+	"github.com/spf13/viper"
+)
+
+var (
+	cache    = gocache.New(24*time.Hour, time.Hour)
+	cacheKey = "85b75fb0-f120-4bfb-a0fe-f017cc72e41f"
+)
+
+type BaseClient2 struct {
+	azKeyvault.BaseClient
+}
+
+func newBaseClient2(base azKeyvault.BaseClient) BaseClient2 {
+	return BaseClient2{
+		BaseClient: base,
+	}
+}
+
+func getKeysClient() azKeyvault.BaseClient {
+	keyClient := azKeyvault.New()
+	a, _ := iam.GetKeyvaultAuthorizer()
+	keyClient.Authorizer = a
+	keyClient.AddToUserAgent(config.UserAgent())
+	return keyClient
+}
+
+func GetKeysVersion(ctx context.Context) (result azKeyvault.KeyListResultPage, err error) {
+	keyClient := getKeysClient()
+	var maxResults int32 = 10
+	result, err = keyClient.GetKeyVersions(ctx, "https://P7KeyValut.vault.azure.net/", "P7IdentityServer4SelfSigned", &maxResults)
+	return
+}
+
+func MintToken(c echo.Context, claims jwt.Claims, notBefore *time.Time, expires *time.Time) (token string, err error) {
+	cachedItem, err := GetCachedKeyVersions()
+	if err != nil {
+		return
+	}
+
+	baseUrl := util.GetBaseUrl(c)
+
+	utcNow := time.Now().UTC().Truncate(time.Minute)
+	if notBefore == nil {
+		notBefore = &utcNow
+	}
+	claims.Issued = jwt.NewNumericTime(utcNow)
+	claims.NotBefore = jwt.NewNumericTime(*notBefore)
+	if expires == nil {
+		claims.Expires = nil
+	} else {
+		claims.Expires = jwt.NewNumericTime(*expires)
+	}
+	claims.KeyID = cachedItem.CurrentVersionId
+	claims.Issuer = baseUrl
+
+	if claims.Audiences == nil {
+		claims.Audiences = []string{}
+	}
+	claims.Audiences = append(claims.Audiences, claims.Issuer)
+
+	keyClient, err := GetKeyClient()
+	if err != nil {
+		return
+	}
+	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")     //"https://P7KeyValut.vault.azure.net/"
+	keyIdentifier := viper.GetString("keyVault.KeyIdentifier") //"P7IdentityServer4SelfSigned"
+	ctx := context.Background()
+
+	byteToken, err := keyClient.Sign2(ctx, &claims, azKeyvault.RS256, keyVaultUrl, keyIdentifier, claims.KeyID)
+	if err != nil {
+		return
+	}
+	token = string(byteToken)
+
+	return
+}
+func RSA256AzureSign(ctx context.Context, data []byte) (kid *string, signature *string, err error) {
+	keyClient := getKeysClient()
+
+	sEnc := util.ByteArraySha256Encode64(data)
+
+	keyOperationResult, err := keyClient.Sign(ctx, "https://P7KeyValut.vault.azure.net/", "P7IdentityServer4SelfSigned", "", keyvault.KeySignParameters{
+		Algorithm: azKeyvault.RS256,
+		Value:     &sEnc,
+	})
+	if err != nil {
+		return
+	}
+	return keyOperationResult.Kid, keyOperationResult.Result, nil
+}
+
+func (keyClient *BaseClient2) Sign2(
+	ctx context.Context,
+	claims *jwt.Claims,
+	alg azKeyvault.JSONWebKeySignatureAlgorithm,
+	vaultBaseURL string,
+	keyName string,
+	keyVersion string) (token []byte, err error) {
+
+	tokenWithoutSignature, err := claims.FormatWithoutSign(string(alg))
+	if err != nil {
+		return nil, err
+	}
+	sEnc := util.ByteArraySha256Encode64(tokenWithoutSignature)
+
+	keyOperationResult, err := keyClient.Sign(ctx, vaultBaseURL, keyName, keyVersion, azKeyvault.KeySignParameters{
+		Algorithm: alg,
+		Value:     &sEnc,
+	})
+	if err != nil {
+		return
+	}
+
+	token = append(tokenWithoutSignature, '.')
+	token = append(token, []byte(*keyOperationResult.Result)...)
+	return token, nil
+}
+
+func (keyClient *BaseClient2) GetActiveKeysVersion2(ctx context.Context, keyVaultUrl string, keyIdentifier string) (finalResult []azKeyvault.KeyBundle, currentKeyBundle azKeyvault.KeyBundle, err error) {
+	keyId := "123"
+	claims := jwt.Claims{
+		Registered: jwt.Registered{
+			Subject:   "kkazanova",
+			Audiences: []string{"KGB", "RU"},
+		},
+		Set: map[string]interface{}{
+			"iss": nil,
+			"sub": "karcher",
+			"aud": "ISIS",
+		},
+		KeyID: keyId,
+	}
+
+	token, _ := keyClient.Sign2(ctx, &claims, azKeyvault.RS256, keyVaultUrl, keyIdentifier, keyId)
+	sToken := string(token)
+	fmt.Println(sToken)
+	// Length requirements defined by 2.2.2.9.1 RSA Private Key BLOB (https://msdn.microsoft.com/en-us/library/cc250013.aspx).
+	/*
+		PubExp (4 bytes): Length MUST be 4 bytes.
+
+		This field MUST be present as an unsigned integer in little-endian format.
+
+		The value of this field MUST be the RSA public key exponent for this key. The client SHOULD set this value to 65,537.
+
+		E is comming back as an Base64Url encoded byte[] of size 3.
+	*/
+
+	var maxResults int32 = 10
+	pageResult, err := keyClient.GetKeyVersions(ctx,
+		keyVaultUrl,
+		keyIdentifier,
+		&maxResults)
+	if err != nil {
+		return
+	}
+	utcNow := time.Now().UTC()
+	for {
+		for _, element := range pageResult.Values() {
+			// element is the element from someSlice for where we are
+			if *element.Attributes.Enabled {
+				var keyExpire time.Time
+				keyExpire = time.Time(*element.Attributes.Expires)
+				if keyExpire.After(utcNow) {
+					parts := strings.Split(*element.Kid, "/")
+					lastItemVersion := parts[len(parts)-1]
+
+					keyBundle, er := keyClient.GetKey(ctx,
+						keyVaultUrl,
+						keyIdentifier,
+						lastItemVersion)
+					if er != nil {
+						err = er
+						return
+					}
+					fixedE := fixE(*keyBundle.Key.E)
+					*keyBundle.Key.E = fixedE
+					finalResult = append(finalResult, keyBundle)
+				}
+			}
+		}
+		if !pageResult.NotDone() {
+			break
+		}
+		err = pageResult.Next()
+		if err != nil {
+			return
+		}
+	}
+
+	sort.Slice(finalResult[:], func(i, j int) bool {
+		notBeforeA := time.Time(*finalResult[i].Attributes.NotBefore)
+		notBeforeB := time.Time(*finalResult[j].Attributes.NotBefore)
+
+		return notBeforeA.After(notBeforeB)
+	})
+
+	for _, element := range finalResult {
+		notVBefore := time.Time(*element.Attributes.NotBefore)
+		if notVBefore.Before(utcNow) {
+			currentKeyBundle = element
+			break
+		}
+	}
+	return
+}
+
+func GetKeyClient() (keyClient BaseClient2, err error) {
+
+	baseClient := getKeysClient()
+	keyClient = newBaseClient2(baseClient)
+	err = nil
+	return
+}
+
+func GetActiveKeysVersion(ctx context.Context) (finalResult []azKeyvault.KeyBundle, currentKeyBundle azKeyvault.KeyBundle, err error) {
+
+	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")     //"https://P7KeyValut.vault.azure.net/"
+	keyIdentifier := viper.GetString("keyVault.KeyIdentifier") //"P7IdentityServer4SelfSigned"
+	//keyClient := getKeysClient()
+
+	baseClient2, err := GetKeyClient()
+	if err != nil {
+		return
+	}
+	finalResult, currentKeyBundle, err = baseClient2.GetActiveKeysVersion2(ctx, keyVaultUrl, keyIdentifier)
+
+	return
+}
+
+// CreateKeyBundle creates a key in the specified keyvault
+func CreateKey(ctx context.Context, vaultName, keyName string) (key azKeyvault.KeyBundle, err error) {
+	vaultsClient := getVaultsClient()
+	vault, err := vaultsClient.Get(ctx, config.BaseGroupName(), vaultName)
+	if err != nil {
+		return
+	}
+	vaultURL := *vault.Properties.VaultURI
+
+	keyClient := getKeysClient()
+	return keyClient.CreateKey(
+		ctx,
+		vaultURL,
+		keyName,
+		azKeyvault.KeyCreateParameters{
+			KeyAttributes: &azKeyvault.KeyAttributes{
+				Enabled: to.BoolPtr(true),
+			},
+			KeySize: to.Int32Ptr(2048), // As of writing this sample, 2048 is the only supported KeySize.
+			KeyOps: &[]azKeyvault.JSONWebKeyOperation{
+				azKeyvault.Encrypt,
+				azKeyvault.Decrypt,
+			},
+			Kty: azKeyvault.EC,
+		})
+}
+
+func fixE(base64EncodedE string) string {
+	sDec, _ := b64.StdEncoding.DecodeString(base64EncodedE)
+	sDec = forceByteArrayLength(sDec, 4)
+	sEnc := b64.StdEncoding.EncodeToString(sDec)
+	parts := strings.Split(sEnc, "=")
+	sEnc = parts[0]
+	return sEnc
+}
+
+func forceByteArrayLength(slice []byte, requireLength int) []byte {
+	n := len(slice)
+	if n >= requireLength {
+		return slice
+	}
+	newSlice := make([]byte, requireLength)
+	offset := requireLength - n
+	copy(newSlice[offset:], slice)
+	slice = newSlice
+	return slice
+}
+
+type CachedKeyVersions struct {
+	CurrentKeyBundle                         azKeyvault.KeyBundle
+	CurrentVersionId                         string
+	WellKnownOpenidConfigurationJwksResponse renderings.WellKnownOpenidConfigurationJwksResponse
+}
+
+func GetCachedKeyVersions() (cachedResponse CachedKeyVersions, err error) {
+
+	var cachedItem interface{}
+	var found bool
+
+	cachedItem, found = cache.Get(cacheKey)
+
+	if !found {
+		err = DoKeyvaultBackground()
+		if err != nil {
+			log.Fatalf("failed to DoKeyvaultBackground: %v\n", err.Error())
+			return
+		}
+		cachedItem, found = cache.Get(cacheKey)
+		if !found {
+			err = errors.New("critical failure to DoKeyvaultBackground")
+			log.Fatalln(err.Error())
+			return
+		}
+	}
+	cachedResponse = cachedItem.(CachedKeyVersions)
+	return
+}
+
+func DoKeyvaultBackground() (err error) {
+	now := time.Now().UTC()
+	fmt.Println(fmt.Sprintf("Start-DoKeyvaultBackground:%s", now))
+	ctx := context.Background()
+	activeKeys, currentKeyBundle, err := GetActiveKeysVersion(ctx)
+	if err != nil {
+		return
+	}
+	resp := renderings.WellKnownOpenidConfigurationJwksResponse{}
+
+	for _, element := range activeKeys {
+
+		parts := strings.Split(*element.Key.Kid, "/")
+		lastItemVersion := parts[len(parts)-1]
+
+		jwk := renderings.JwkResponse{}
+		jwk.Kid = lastItemVersion
+		jwk.Kty = string(element.Key.Kty)
+		jwk.N = *element.Key.N
+		jwk.E = *element.Key.E
+		jwk.Alg = "RSA256"
+		jwk.Use = "sig"
+		resp.Keys = append(resp.Keys, jwk)
+	}
+
+	parts := strings.Split(*currentKeyBundle.Key.Kid, "/")
+	lastItemVersion := parts[len(parts)-1]
+
+	cacheItem := CachedKeyVersions{
+		WellKnownOpenidConfigurationJwksResponse: resp,
+		CurrentKeyBundle:                         currentKeyBundle,
+		CurrentVersionId:                         lastItemVersion,
+	}
+
+	cache.Set(cacheKey, cacheItem, gocache.NoExpiration)
+	fmt.Println(fmt.Sprintf("Success-DoKeyvaultBackground:%s", now))
+	return
+}
