@@ -27,7 +27,7 @@ func buildArbitraryResourceOwnerClaims(req *ArbitraryResourceOwnerRequest) (err 
 
 	// find anything that looks like our reservied models.NAMESPACE_NAME
 	// remove it from the map
-	reservedNames := []string{"scope", "custom_payload", "aud", "amr", "nbf", "exp", "iss", "client_id", "sub", "auth_time", "idp", models.NAMESPACE_NAME}
+	reservedNames := []string{"scope", "aud", "amr", "nbf", "exp", "iss", "client_id", "sub", "auth_time", "idp", models.NAMESPACE_NAME}
 	filterOutKeys := []string{}
 	for k, _ := range objmap {
 		if util.Contains(&reservedNames, k, true) {
@@ -64,13 +64,11 @@ func buildArbitraryResourceOwnerClaims(req *ArbitraryResourceOwnerRequest) (err 
 	}
 
 	for key, element := range tokenBuildRequest.Claims.Set {
-		er, sArr := util.InterfaceArrayToStringArray(element)
-		if er != nil {
-			err = er
-			return
+		sArr := util.InterfaceArrayToStringArray(element)
+		if sArr != nil {
+			delete(tokenBuildRequest.Claims.Set, key)
+			tokenBuildRequest.Claims.Set[key] = sArr
 		}
-		delete(tokenBuildRequest.Claims.Set, key)
-		tokenBuildRequest.Claims.Set[key] = sArr
 	}
 
 	tokenBuildRequest.Claims.Set["client_id"] = client.ClientID
@@ -122,14 +120,7 @@ func buildArbitraryResourceOwnerClaims(req *ArbitraryResourceOwnerRequest) (err 
 		}
 		tokenBuildRequest.Claims.Set["amr"] = arbAmrs
 	}
-	if len(req.CustomPayload) > 0 {
-		var objmap interface{}
-		err = json.Unmarshal([]byte(req.CustomPayload), &objmap)
-		if err != nil {
-			return
-		}
-		tokenBuildRequest.Claims.Set["custom_payload"] = objmap
-	}
+
 	if len(req.Subject) > 0 {
 		tokenBuildRequest.Claims.Subject = req.Subject
 	}

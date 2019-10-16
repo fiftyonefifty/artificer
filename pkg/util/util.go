@@ -4,7 +4,6 @@ import (
 	"crypto"
 	b64 "encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -28,7 +27,7 @@ func FilterOutStringElement(a *[]string, element string) {
 	*a = (*a)[:n]
 }
 
-func InterfaceArrayToStringArray(source interface{}) (err error, result []string) {
+func InterfaceArrayToStringArray(source interface{}) (result []string) {
 	switch vv := source.(type) {
 	case []interface{}:
 		result = []string{}
@@ -39,7 +38,7 @@ func InterfaceArrayToStringArray(source interface{}) (err error, result []string
 	case []string:
 		result = source.([]string)
 	default:
-		err = errors.New("Not an array")
+		result = nil
 	}
 	return
 }
