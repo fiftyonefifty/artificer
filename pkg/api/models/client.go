@@ -1,7 +1,9 @@
 package models
 
 const (
-	NAMESPACE_NAME string = "artificer-ns"
+	NAMESPACE_NAME  string = "artificer-ns"
+	MAX_SUBJECT_LEN int    = 64
+	MAX_SCOPE_LEN   int    = 1024
 )
 
 type TokenUsage int

@@ -76,8 +76,13 @@ func handleClientCredentialsFlow(c echo.Context) error {
 			break
 		}
 	}
-
-	token, err := keyvault.MintToken(c, claims, &utcNotBefore, &utcExpires)
+	tokenBuildRequest := keyvault.TokenBuildRequest{
+		Claims:       claims,
+		UtcNotBefore: &utcNotBefore,
+		UtcExpires:   &utcExpires,
+	}
+	tokenBuildRequest.Claims = claims
+	token, err := keyvault.MintToken(c, &tokenBuildRequest)
 	if err != nil {
 		return err
 	}
