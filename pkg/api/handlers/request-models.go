@@ -19,7 +19,10 @@ type (
 		CustomPayload       string `json:"custom_payload" form:"custom_payload" query:"custom_payload"`
 		AccessTokenLifetime int    `json:"access_token_lifetime" form:"access_token_lifetime" query:"access_token_lifetime"`
 	}
-
+	ArbitraryResourceOwnerRequest struct {
+		ArbitraryNoSubjectRequest
+		Subject string `json:"subject" form:"subject" query:"subject"`
+	}
 	ClientCredentialsResponse struct {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   int    `json:"expires_in"`

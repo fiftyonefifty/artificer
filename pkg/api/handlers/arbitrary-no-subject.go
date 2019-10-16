@@ -13,21 +13,17 @@ import (
 	"github.com/pascaldekloe/jwt"
 )
 
-func handleArbitraryNoSubjectFlow(c echo.Context) error {
-	req := &ArbitraryNoSubjectRequest{}
-	if err := c.Bind(req); err != nil {
-		return err
-	}
+func buildArbitraryNoSubjectClaims(req *ArbitraryNoSubjectRequest) (err error, utcNotBefore time.Time, utcExpires time.Time, accessTokenLifetime int, claims jwt.Claims) {
 
-	if err := validateArbitraryNoSubjectRequest(req); err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+	if err = validateArbitraryNoSubjectRequest(req); err != nil {
+		return
 	}
 
 	var client *models.Client
 	client = config.ClientMap[req.ClientID]
 
 	var objmap map[string]interface{}
-	err := json.Unmarshal([]byte(req.ArbitraryClaims), &objmap)
+	err = json.Unmarshal([]byte(req.ArbitraryClaims), &objmap)
 
 	// find anything that looks like our reservied models.NAMESPACE_NAME
 	// remove it from the map
@@ -42,15 +38,15 @@ func handleArbitraryNoSubjectFlow(c echo.Context) error {
 		delete(objmap, k)
 	}
 
-	accessTokenLifetime := client.AccessTokenLifetime
+	accessTokenLifetime = client.AccessTokenLifetime
 	if req.AccessTokenLifetime > 0 && req.AccessTokenLifetime < client.AccessTokenLifetime {
 		accessTokenLifetime = req.AccessTokenLifetime
 	}
 	utcNow := time.Now().UTC().Truncate(time.Minute)
-	utcExpires := utcNow.Add(time.Second * time.Duration(accessTokenLifetime))
-	utcNotBefore := utcNow
+	utcExpires = utcNow.Add(time.Second * time.Duration(accessTokenLifetime))
+	utcNotBefore = utcNow
 
-	claims := jwt.Claims{
+	claims = jwt.Claims{
 		// cover all registered fields
 		Registered: jwt.Registered{},
 		Set:        objmap,
@@ -58,17 +54,18 @@ func handleArbitraryNoSubjectFlow(c echo.Context) error {
 	if len(req.ArbitraryAudiences) > 0 {
 		var arbAud []string
 
-		err := json.Unmarshal([]byte(req.ArbitraryAudiences), &arbAud)
+		err = json.Unmarshal([]byte(req.ArbitraryAudiences), &arbAud)
 		if err != nil {
-			return err
+			return
 		}
 		claims.Audiences = arbAud
 	}
 
 	for key, element := range claims.Set {
-		err, sArr := util.InterfaceArrayToStringArray(element)
-		if err != nil {
-			return err
+		er, sArr := util.InterfaceArrayToStringArray(element)
+		if er != nil {
+			err = er
+			return
 		}
 		delete(claims.Set, key)
 		claims.Set[key] = sArr
@@ -101,19 +98,32 @@ func handleArbitraryNoSubjectFlow(c echo.Context) error {
 	if len(req.ArbitraryAmrs) > 0 {
 		var arbAmrs []string
 
-		err := json.Unmarshal([]byte(req.ArbitraryAmrs), &arbAmrs)
+		err = json.Unmarshal([]byte(req.ArbitraryAmrs), &arbAmrs)
 		if err != nil {
-			return err
+			return
 		}
 		claims.Set["amr"] = arbAmrs
 	}
 	if len(req.CustomPayload) > 0 {
 		var objmap interface{}
-		err := json.Unmarshal([]byte(req.CustomPayload), &objmap)
+		err = json.Unmarshal([]byte(req.CustomPayload), &objmap)
 		if err != nil {
-			return err
+			return
 		}
 		claims.Set["custom_payload"] = objmap
+	}
+
+	return
+}
+
+func handleArbitraryNoSubjectFlow(c echo.Context) (err error) {
+	req := &ArbitraryNoSubjectRequest{}
+	if err = c.Bind(req); err != nil {
+		return
+	}
+	err, utcNotBefore, utcExpires, accessTokenLifetime, claims := buildArbitraryNoSubjectClaims(req)
+	if err != nil {
+		return err
 	}
 
 	token, err := keyvault.MintToken(c, claims, &utcNotBefore, &utcExpires)
