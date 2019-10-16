@@ -14,12 +14,6 @@ import (
 
 func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (err error) {
 
-	if !json.Valid([]byte(req.CustomPayload)) {
-		err = errors.New("custom_payload: is not a valid json")
-		fmt.Println(err.Error())
-		return
-	}
-
 	schemaLoader := gojsonschema.NewStringLoader(`{
 		"$schema": "http://json-schema.org/draft-04/schema#",
 		"type": "object",
@@ -37,18 +31,19 @@ func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (
 		return
 	}
 	documentLoader := gojsonschema.NewStringLoader(req.ArbitraryClaims)
-
-	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	if !result.Valid() {
-		err = errors.New("arbitrary_claims: did not pass schema validation")
-		fmt.Println(err.Error())
-		return
-	}
-
+	var result *gojsonschema.Result
+	/*
+		result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		if !result.Valid() {
+			err = errors.New("arbitrary_claims: did not pass schema validation")
+			fmt.Println(err.Error())
+			return
+		}
+	*/
 	schemaLoader = gojsonschema.NewStringLoader(`{
 		"$schema": "http://json-schema.org/draft-04/schema#",
 		"type": "array",
