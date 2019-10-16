@@ -12,7 +12,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-func validateArbitraryNoSubjectRequest(req *ArbitraryNoSubjectRequest) (err error) {
+func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (err error) {
 
 	if !json.Valid([]byte(req.CustomPayload)) {
 		err = errors.New("custom_payload: is not a valid json")
@@ -56,6 +56,26 @@ func validateArbitraryNoSubjectRequest(req *ArbitraryNoSubjectRequest) (err erro
 			"type": "string"
 		  }
 	  }`)
+
+	if len(req.Subject) > 0 {
+		if len(req.Subject) > models.MAX_SUBJECT_LEN {
+			err = errors.New(fmt.Sprintf("Subject is larger than allowed length: %d", models.MAX_SUBJECT_LEN))
+			fmt.Println(err.Error())
+			return
+		}
+	}
+	if len(req.Scope) > 0 {
+		if len(req.Scope) > models.MAX_SCOPE_LEN {
+			err = errors.New(fmt.Sprintf("Scope is larger than allowed length: %d", models.MAX_SCOPE_LEN))
+			fmt.Println(err.Error())
+			return
+		}
+		scopes := strings.Split(req.Scope, " ")
+		req.Scopes = make(map[string]interface{})
+		for _, e := range scopes {
+			req.Scopes[e] = true
+		}
+	}
 
 	ts := strings.TrimSpace(req.ArbitraryAmrs)
 	if len(ts) > 0 {

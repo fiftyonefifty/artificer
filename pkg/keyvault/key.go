@@ -29,6 +29,14 @@ var (
 	cacheKey = "85b75fb0-f120-4bfb-a0fe-f017cc72e41f"
 )
 
+type TokenBuildRequest struct {
+	UtcNotBefore        *time.Time
+	UtcExpires          *time.Time
+	OfflineAccess       bool
+	AccessTokenLifetime int
+	Claims              jwt.Claims
+}
+
 type BaseClient2 struct {
 	azKeyvault.BaseClient
 }
@@ -54,7 +62,7 @@ func GetKeysVersion(ctx context.Context) (result azKeyvault.KeyListResultPage, e
 	return
 }
 
-func MintToken(c echo.Context, claims jwt.Claims, notBefore *time.Time, expires *time.Time) (token string, err error) {
+func MintToken(c echo.Context, tokenBuildRequest *TokenBuildRequest) (token string, err error) {
 	cachedItem, err := GetCachedKeyVersions()
 	if err != nil {
 		return
@@ -62,24 +70,24 @@ func MintToken(c echo.Context, claims jwt.Claims, notBefore *time.Time, expires 
 
 	baseUrl := util.GetBaseUrl(c)
 
-	utcNow := time.Now().UTC().Truncate(time.Minute)
-	if notBefore == nil {
-		notBefore = &utcNow
+	utcNow := time.Now().UTC().Truncate(time.Second)
+	if tokenBuildRequest.UtcNotBefore == nil {
+		tokenBuildRequest.UtcNotBefore = &utcNow
 	}
-	claims.Issued = jwt.NewNumericTime(utcNow)
-	claims.NotBefore = jwt.NewNumericTime(*notBefore)
-	if expires == nil {
-		claims.Expires = nil
+	tokenBuildRequest.Claims.Issued = jwt.NewNumericTime(utcNow)
+	tokenBuildRequest.Claims.NotBefore = jwt.NewNumericTime(*tokenBuildRequest.UtcNotBefore)
+	if tokenBuildRequest.UtcExpires == nil {
+		tokenBuildRequest.Claims.Expires = nil
 	} else {
-		claims.Expires = jwt.NewNumericTime(*expires)
+		tokenBuildRequest.Claims.Expires = jwt.NewNumericTime(*tokenBuildRequest.UtcExpires)
 	}
-	claims.KeyID = cachedItem.CurrentVersionId
-	claims.Issuer = baseUrl
+	tokenBuildRequest.Claims.KeyID = cachedItem.CurrentVersionId
+	tokenBuildRequest.Claims.Issuer = baseUrl
 
-	if claims.Audiences == nil {
-		claims.Audiences = []string{}
+	if tokenBuildRequest.Claims.Audiences == nil {
+		tokenBuildRequest.Claims.Audiences = []string{}
 	}
-	claims.Audiences = append(claims.Audiences, claims.Issuer)
+	tokenBuildRequest.Claims.Audiences = append(tokenBuildRequest.Claims.Audiences, tokenBuildRequest.Claims.Issuer)
 
 	keyClient, err := GetKeyClient()
 	if err != nil {
@@ -89,7 +97,7 @@ func MintToken(c echo.Context, claims jwt.Claims, notBefore *time.Time, expires 
 	keyIdentifier := viper.GetString("keyVault.KeyIdentifier") //"P7IdentityServer4SelfSigned"
 	ctx := context.Background()
 
-	byteToken, err := keyClient.Sign2(ctx, &claims, azKeyvault.RS256, keyVaultUrl, keyIdentifier, claims.KeyID)
+	byteToken, err := keyClient.Sign2(ctx, &tokenBuildRequest.Claims, azKeyvault.RS256, keyVaultUrl, keyIdentifier, tokenBuildRequest.Claims.KeyID)
 	if err != nil {
 		return
 	}

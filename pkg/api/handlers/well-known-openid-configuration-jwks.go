@@ -36,7 +36,13 @@ func MintTestToken(c echo.Context) (err error) {
 	claims.Set["primes"] = []int{2, 3, 5, 7, 11, 13}
 	claims.Set["roles"] = []string{"admin", "super-duper"}
 	claims.Set["scope"] = []string{"aud1", "aud2"}
-	token, err := keyvault.MintToken(c, claims, &utcNotBefore, &utcExpires)
+	tokenBuildRequest := keyvault.TokenBuildRequest{
+		Claims:       claims,
+		UtcNotBefore: &utcNotBefore,
+		UtcExpires:   &utcExpires,
+	}
+
+	token, err := keyvault.MintToken(c, &tokenBuildRequest)
 
 	return c.JSON(http.StatusOK, token)
 }

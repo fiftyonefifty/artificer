@@ -21,9 +21,8 @@ func TokenEndpoint(c echo.Context) (err error) {
 	switch req.GrantType {
 	case "client_credentials":
 		return handleClientCredentialsFlow(c)
-	case "arbitrary_no_subject":
-		return handleArbitraryNoSubjectFlow(c)
 	case "arbitrary_resource_owner":
+		return handleArbitraryResourceOwnerFlow(c)
 	case "arbitrary_identity":
 
 	}

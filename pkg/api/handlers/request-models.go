@@ -11,8 +11,11 @@ type (
 		Scope string `json:"scope" form:"scope" query:"scope"`
 	}
 
-	ArbitraryNoSubjectRequest struct {
+	ArbitraryResourceOwnerRequest struct {
 		TokenRequest
+		Scope               string `json:"scope" form:"scope" query:"scope"`
+		Scopes              map[string]interface{}
+		Subject             string `json:"subject" form:"subject" query:"subject"`
 		ArbitraryClaims     string `json:"arbitrary_claims" form:"arbitrary_claims" query:"arbitrary_claims"`
 		ArbitraryAmrs       string `json:"arbitrary_amrs" form:"arbitrary_amrs" query:"arbitrary_amrs"`
 		ArbitraryAudiences  string `json:"arbitrary_audiences" form:"arbitrary_audiences" query:"arbitrary_audiences"`

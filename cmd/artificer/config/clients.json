@@ -36,7 +36,6 @@
 		"allowedGrantTypes": [
 			"client_credentials",
 			"arbitrary_resource_owner",
-			"arbitrary_no_subject",
 			"arbitrary_identity"
 		],
 		"clientSecrets": [{
@@ -80,7 +79,6 @@
 		"allowedGrantTypes": [
 			"client_credentials",
 			"arbitrary_resource_owner",
-			"arbitrary_no_subject",
 			"arbitrary_identity"
 		],
 		"clientSecrets": [{
