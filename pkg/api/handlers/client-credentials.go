@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"artificer/pkg/api/models"
-	"artificer/pkg/config"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
 	"net/http"
@@ -18,8 +16,8 @@ func handleClientCredentialsFlow(c echo.Context) error {
 	if err := c.Bind(req); err != nil {
 		return err
 	}
-	var client *models.Client
-	client = config.ClientMap[req.ClientID]
+
+	_, client := clientStore.GetClient(req.ClientID)
 
 	scope := strings.TrimSpace(req.Scope)
 

@@ -4,7 +4,7 @@ import (
 	"artificer/pkg/api/handlers"
 	"artificer/pkg/config"
 	"artificer/pkg/keyvault"
-	"context"
+	"artificer/pkg/util"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,7 +35,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	config.LoadClientConfig(ProcessDirectory)
+
 }
 
 func Alive() {
@@ -53,26 +53,41 @@ func main() {
 	// Creating a new Echo instance.
 	e := echo.New()
 
-	firstAlive := make(chan bool, 1)
-
+	keyVaultDone := make(chan bool, 1)
+	clientConfigDone := make(chan bool, 1)
 	go func() {
+		fmt.Println("Startup Enter ... DoKeyvaultBackground")
 		keyvault.DoKeyvaultBackground()
-		firstAlive <- true
+		fmt.Println("Startup Complete ... DoKeyvaultBackground")
+		keyVaultDone <- true
 	}()
 	go func() {
-		ctx := context.Background()
-		keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")
-		keyvault.CreateKey(ctx, keyVaultUrl, "test")
-
+		fmt.Println("Startup Enter ... LoadClientConfig")
+		config.LoadClientConfig(ProcessDirectory)
+		fmt.Println("Startup Complete ... LoadClientConfig")
+		clientConfigDone <- true
 	}()
 
 	c := cron.New()
 	cronSpec := viper.GetString("keyVault.cronSpec") // i.e. "@every 10s"
-
-	c.AddFunc(cronSpec, func() {
+	_, err = c.AddFunc(cronSpec, func() {
+		fmt.Println("CRON Enter ... DoKeyvaultBackground")
 		keyvault.DoKeyvaultBackground()
-		firstAlive <- true
+		fmt.Println("CRON Complete ... DoKeyvaultBackground")
 	})
+	if err != nil {
+		panic(err.Error())
+	}
+	cronSpec = viper.GetString("clientConfig.cronSpec") // i.e. "@every 5min"
+
+	_, err = c.AddFunc(cronSpec, func() {
+		fmt.Println("CRON Enter ... LoadClientConfig")
+		config.LoadClientConfig(ProcessDirectory)
+		fmt.Println("CRON Complete ... LoadClientConfig")
+	})
+	if err != nil {
+		panic(err.Error())
+	}
 	c.Start()
 
 	// Configure Middleware
@@ -103,7 +118,9 @@ func main() {
 	fmt.Println("------ Waiting for initial go routines to complete ------")
 	fmt.Println()
 
-	<-firstAlive
+	allDoneChannel := util.WaitOnAllChannels(keyVaultDone, clientConfigDone)
+	<-allDoneChannel
+
 	// If you start me up, I'll never stop
 	e.Logger.Fatal(e.Start(":9000"))
 }

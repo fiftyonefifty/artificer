@@ -8,7 +8,28 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
+	"sync"
 )
+
+func WaitOnAllChannels(cs ...<-chan bool) <-chan bool {
+	out := make(chan bool)
+	var wg sync.WaitGroup
+	wg.Add(len(cs))
+
+	for _, c := range cs {
+		go func(c <-chan bool) {
+			<-c
+			wg.Done()
+		}(c)
+	}
+	go func() {
+		wg.Wait()
+		out <- true
+		close(out)
+	}()
+
+	return out
+}
 
 // PrintAndLog writes to stdout and to a logger.
 func PrintAndLog(message string) {

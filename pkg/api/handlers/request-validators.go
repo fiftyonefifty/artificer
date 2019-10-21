@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"artificer/pkg/api/models"
-	"artificer/pkg/config"
 	"artificer/pkg/util"
 	"encoding/json"
 	"errors"
@@ -124,9 +123,8 @@ func validateClient(req *TokenRequest) (err error) {
 
 	sEnc := util.StringSha256Encode64(req.ClientSecret)
 
-	var client *models.Client
-	client = config.ClientMap[req.ClientID]
-	if client == nil {
+	found, client := clientStore.GetClient(req.ClientID)
+	if !found {
 		err = errors.New(fmt.Sprintf("client_id: %s does not exist", req.ClientID))
 		fmt.Println(err.Error())
 		return

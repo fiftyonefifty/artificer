@@ -15,30 +15,33 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+type InMemoryClientStore struct {
+	ClientMapA map[string]*models.Client
+	ClientMapB map[string]*models.Client
+	pCurrent   *map[string]*models.Client
+}
+
 var (
-	ClientsConfig *viper.Viper
-	Clients       []models.Client
-	ClientMap     = make(map[string]*models.Client)
+	ClientsConfig        *viper.Viper
+	Clients              []models.Client
+	pInMemoryClientStore *InMemoryClientStore = &InMemoryClientStore{}
 )
 
-type inMemoryClientStore struct {
-	clientMap map[string]*models.Client
+func NewClientStore() contracts.IClientStore {
+	return pInMemoryClientStore
 }
 
-func NewClientStore() contracts.IClientStore {
-	store := inMemoryClientStore{
-		clientMap: ClientMap,
-	}
-	return store
-}
-func (store inMemoryClientStore) GetClient(id string) (found bool, client models.Client) {
+func (store InMemoryClientStore) GetClient(id string) (found bool, client models.Client) {
+
+	currenClientMap := *pInMemoryClientStore.pCurrent
 
 	found = false
-	c := store.clientMap[id]
+	c := currenClientMap[id]
 	if c == nil {
 		return
 	}
 	client = *c
+	found = true
 	return
 
 }
@@ -76,8 +79,16 @@ func LoadClientConfig(processDirectory string) {
 		panic(err)
 	}
 	ClientsConfig.UnmarshalKey("clients", &Clients)
+	if pInMemoryClientStore.pCurrent == nil || pInMemoryClientStore.pCurrent == &pInMemoryClientStore.ClientMapB {
+		pInMemoryClientStore.pCurrent = &pInMemoryClientStore.ClientMapA
+	} else {
+		pInMemoryClientStore.pCurrent = &pInMemoryClientStore.ClientMapB
+	}
+
+	a := make(map[string]*models.Client)
+
 	for _, v := range Clients {
-		ClientMap[v.ClientID] = &v
+		a[v.ClientID] = &v
 		sort.Strings(v.AllowedGrantTypes)
 		sort.Strings(v.AllowedScopes)
 		util.FilterOutStringElement(&v.AllowedScopes, "artificer-ns")
@@ -86,4 +97,6 @@ func LoadClientConfig(processDirectory string) {
 			v.AllowedGrantTypesMap[agt] = ""
 		}
 	}
+	pInMemoryClientStore.pCurrent = &a
+
 }
