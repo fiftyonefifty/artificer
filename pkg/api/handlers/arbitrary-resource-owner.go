@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"artificer/pkg/api/models"
-	"artificer/pkg/config"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
 	"encoding/json"
@@ -19,8 +18,7 @@ func buildArbitraryResourceOwnerClaims(req *ArbitraryResourceOwnerRequest) (err 
 		return
 	}
 
-	var client *models.Client
-	client = config.ClientMap[req.ClientID]
+	_, client := clientStore.GetClient(req.ClientID)
 
 	var objmap map[string]interface{}
 	err = json.Unmarshal([]byte(req.ArbitraryClaims), &objmap)
