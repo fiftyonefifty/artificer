@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	echo "github.com/labstack/echo/v4"
@@ -16,13 +18,24 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	ProcessDirectory string
+)
+
 func init() {
+	var err error
+	ProcessDirectory, err = filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(ProcessDirectory)
+
 	viper.SetConfigFile("config/appsettings.json")
-	err := viper.ReadInConfig()
+	err = viper.ReadInConfig()
 	if err != nil {
 		panic(err)
 	}
-	config.LoadClientConfig()
+	config.LoadClientConfig(ProcessDirectory)
 }
 
 func Alive() {
@@ -30,8 +43,8 @@ func Alive() {
 	fmt.Println(fmt.Sprintf("Alive:%s", now))
 }
 func main() {
-
 	var err error
+
 	err = config.ParseEnvironment()
 	if err != nil {
 		log.Fatalf("failed to parse env: %v\n", err.Error())

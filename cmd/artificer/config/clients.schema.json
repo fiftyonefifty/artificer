@@ -1,0 +1,331 @@
+{
+    "definitions": {},
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "http://example.com/root.json",
+    "type": "object",
+    "title": "The Clients Schema",
+    "required": [
+      "clients"
+    ],
+    "properties": {
+      "clients": {
+        "$id": "#/properties/clients",
+        "type": "array",
+        "title": "The Clients Schema",
+        "items": {
+          "$id": "#/properties/clients/items",
+          "type": "object",
+          "title": "The Items Schema",
+          "required": [
+            "enabled",
+            "clientId",
+            "clientName",
+            "description",
+            "namespace",
+            "requireRefreshClientSecret",
+            "allowOfflineAccess",
+            "updateAccessTokenClaimsOnRefresh",
+            "includeJwtId",
+            "alwaysSendClientClaims",
+            "alwaysIncludeUserClaimsInIdToken",
+            "requireClientSecret",
+            "accessTokenLifetime",
+            "absoluteRefreshTokenLifetime",
+            "slidingRefreshTokenLifetime",
+            "identityTokenLifetime",
+            "refreshTokenUsage",
+            "refreshTokenExpiration",
+            "accessTokenType",
+            "claims",
+            "allowedScopes",
+            "allowedGrantTypes",
+            "clientSecrets"
+          ],
+          "properties": {
+            "enabled": {
+              "$id": "#/properties/clients/items/properties/enabled",
+              "type": "boolean",
+              "title": "The Enabled Schema",
+              "default": false,
+              "examples": [
+                true
+              ]
+            },
+            "clientId": {
+              "$id": "#/properties/clients/items/properties/clientId",
+              "type": "string",
+              "title": "The Clientid Schema",
+              "default": "",
+              "examples": [
+                "arbitrary-resource-owner-client"
+              ],
+              "pattern": "^(.*)$"
+            },
+            "clientName": {
+              "$id": "#/properties/clients/items/properties/clientName",
+              "type": "string",
+              "title": "The Clientname Schema",
+              "default": "",
+              "examples": [
+                "test-clientName"
+              ],
+              "pattern": "^(.*)$"
+            },
+            "description": {
+              "$id": "#/properties/clients/items/properties/description",
+              "type": "string",
+              "title": "The Description Schema",
+              "default": "",
+              "examples": [
+                "test-description"
+              ],
+              "pattern": "^(.*)$"
+            },
+            "namespace": {
+              "$id": "#/properties/clients/items/properties/namespace",
+              "type": "string",
+              "title": "The Namespace Schema",
+              "default": "",
+              "examples": [
+                "test-namespace"
+              ],
+              "pattern": "^(.*)$"
+            },
+            "requireRefreshClientSecret": {
+              "$id": "#/properties/clients/items/properties/requireRefreshClientSecret",
+              "type": "boolean",
+              "title": "The Requirerefreshclientsecret Schema",
+              "default": false,
+              "examples": [
+                true
+              ]
+            },
+            "allowOfflineAccess": {
+              "$id": "#/properties/clients/items/properties/allowOfflineAccess",
+              "type": "boolean",
+              "title": "The Allowofflineaccess Schema",
+              "default": false,
+              "examples": [
+                true
+              ]
+            },
+            "updateAccessTokenClaimsOnRefresh": {
+              "$id": "#/properties/clients/items/properties/updateAccessTokenClaimsOnRefresh",
+              "type": "boolean",
+              "title": "The Updateaccesstokenclaimsonrefresh Schema",
+              "default": false,
+              "examples": [
+                true
+              ]
+            },
+            "includeJwtId": {
+              "$id": "#/properties/clients/items/properties/includeJwtId",
+              "type": "boolean",
+              "title": "The Includejwtid Schema",
+              "default": false,
+              "examples": [
+                true
+              ]
+            },
+            "alwaysSendClientClaims": {
+              "$id": "#/properties/clients/items/properties/alwaysSendClientClaims",
+              "type": "boolean",
+              "title": "The Alwayssendclientclaims Schema",
+              "default": false,
+              "examples": [
+                true
+              ]
+            },
+            "alwaysIncludeUserClaimsInIdToken": {
+              "$id": "#/properties/clients/items/properties/alwaysIncludeUserClaimsInIdToken",
+              "type": "boolean",
+              "title": "The Alwaysincludeuserclaimsinidtoken Schema",
+              "default": false,
+              "examples": [
+                true
+              ]
+            },
+            "requireClientSecret": {
+              "$id": "#/properties/clients/items/properties/requireClientSecret",
+              "type": "boolean",
+              "title": "The Requireclientsecret Schema",
+              "default": false,
+              "examples": [
+                true
+              ]
+            },
+            "accessTokenLifetime": {
+              "$id": "#/properties/clients/items/properties/accessTokenLifetime",
+              "type": "integer",
+              "title": "The Accesstokenlifetime Schema",
+              "default": 0,
+              "examples": [
+                3600
+              ]
+            },
+            "absoluteRefreshTokenLifetime": {
+              "$id": "#/properties/clients/items/properties/absoluteRefreshTokenLifetime",
+              "type": "integer",
+              "title": "The Absoluterefreshtokenlifetime Schema",
+              "default": 0,
+              "examples": [
+                3600
+              ]
+            },
+            "slidingRefreshTokenLifetime": {
+              "$id": "#/properties/clients/items/properties/slidingRefreshTokenLifetime",
+              "type": "integer",
+              "title": "The Slidingrefreshtokenlifetime Schema",
+              "default": 0,
+              "examples": [
+                900
+              ]
+            },
+            "identityTokenLifetime": {
+              "$id": "#/properties/clients/items/properties/identityTokenLifetime",
+              "type": "integer",
+              "title": "The Identitytokenlifetime Schema",
+              "default": 0,
+              "examples": [
+                2600000
+              ]
+            },
+            "refreshTokenUsage": {
+              "$id": "#/properties/clients/items/properties/refreshTokenUsage",
+              "type": "integer",
+              "title": "The Refreshtokenusage Schema",
+              "default": 0,
+              "examples": [
+                1
+              ]
+            },
+            "refreshTokenExpiration": {
+              "$id": "#/properties/clients/items/properties/refreshTokenExpiration",
+              "type": "integer",
+              "title": "The Refreshtokenexpiration Schema",
+              "default": 0,
+              "examples": [
+                1
+              ]
+            },
+            "accessTokenType": {
+              "$id": "#/properties/clients/items/properties/accessTokenType",
+              "type": "integer",
+              "title": "The Accesstokentype Schema",
+              "default": 0,
+              "examples": [
+                0
+              ]
+            },
+            "claims": {
+              "$id": "#/properties/clients/items/properties/claims",
+              "type": "array",
+              "title": "The Claims Schema",
+              "default": null,
+              "items": {
+                "$id": "#/properties/clients/items/properties/claims/items",
+                "type": "object",
+                "title": "The Items Schema",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "$id": "#/properties/clients/items/properties/claims/items/properties/type",
+                    "type": "string",
+                    "title": "The Type Schema",
+                    "default": "",
+                    "examples": [
+                      "artificer-ns"
+                    ],
+                    "pattern": "^(.*)$"
+                  },
+                  "value": {
+                    "$id": "#/properties/clients/items/properties/claims/items/properties/value",
+                    "type": "string",
+                    "title": "The Value Schema",
+                    "default": "",
+                    "examples": [
+                      "private namespace"
+                    ],
+                    "pattern": "^(.*)$"
+                  }
+                }
+              }
+            },
+            "allowedScopes": {
+              "$id": "#/properties/clients/items/properties/allowedScopes",
+              "type": "array",
+              "title": "The Allowedscopes Schema",
+              "items": {
+                "$id": "#/properties/clients/items/properties/allowedScopes/items",
+                "type": "string",
+                "title": "The Items Schema",
+                "default": "",
+                "examples": [
+                  "artificer-ns",
+                  "a",
+                  "b",
+                  "c"
+                ],
+                "pattern": "^(.*)$"
+              }
+            },
+            "allowedGrantTypes": {
+              "$id": "#/properties/clients/items/properties/allowedGrantTypes",
+              "type": "array",
+              "title": "The Allowedgranttypes Schema",
+              "items": {
+                "$id": "#/properties/clients/items/properties/allowedGrantTypes/items",
+                "type": "string",
+                "title": "The Items Schema",
+                "default": "",
+                "examples": [
+                  "client_credentials",
+                  "arbitrary_resource_owner",
+                  "arbitrary_identity"
+                ],
+                "pattern": "^(.*)$"
+              }
+            },
+            "clientSecrets": {
+              "$id": "#/properties/clients/items/properties/clientSecrets",
+              "type": "array",
+              "title": "The Clientsecrets Schema",
+              "items": {
+                "$id": "#/properties/clients/items/properties/clientSecrets/items",
+                "type": "object",
+                "title": "The Items Schema",
+                "required": [
+                  "expiration",
+                  "value"
+                ],
+                "properties": {
+                  "expiration": {
+                    "$id": "#/properties/clients/items/properties/clientSecrets/items/properties/expiration",
+                    "type": "integer",
+                    "title": "The Expiration Schema",
+                    "default": 0,
+                    "examples": [
+                      1604102400
+                    ]
+                  },
+                  "value": {
+                    "$id": "#/properties/clients/items/properties/clientSecrets/items/properties/value",
+                    "type": "string",
+                    "title": "The Value Schema",
+                    "default": "",
+                    "examples": [
+                      "K7gNU3sdo+OL0wNhqoVWhr3g6s1xYv72ol/pe/Unols="
+                    ],
+                    "pattern": "^(.*)$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }

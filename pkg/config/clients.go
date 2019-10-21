@@ -4,9 +4,14 @@ import (
 	"artificer/pkg/api/models"
 	"artificer/pkg/util"
 
+	"fmt"
 	"sort"
+	"strings"
+
+	"path"
 
 	"github.com/spf13/viper"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 var (
@@ -15,11 +20,35 @@ var (
 	ClientMap     = make(map[string]*models.Client)
 )
 
-func LoadClientConfig() {
+func ToCanonical(src string) string {
+	var replacer = strings.NewReplacer("\\", "/")
+	str := replacer.Replace(src)
+	return "file:///" + str
+}
+
+func LoadClientConfig(processDirectory string) {
+
+	schemaPath := ToCanonical(path.Join(processDirectory, "config/clients.schema.json"))
+	documentPath := ToCanonical(path.Join(processDirectory, "config/clients.json"))
+
+	schemaLoader := gojsonschema.NewReferenceLoader(schemaPath)
+	documentLoader := gojsonschema.NewReferenceLoader(documentPath)
+	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+	if err != nil {
+		panic(err.Error())
+	}
+	if result.Valid() {
+		fmt.Printf("The document is valid\n")
+	} else {
+		fmt.Printf("The document is not valid. see errors :\n")
+		for _, desc := range result.Errors() {
+			fmt.Printf("- %s\n", desc)
+		}
+	}
 
 	ClientsConfig = viper.New()
-	ClientsConfig.SetConfigFile(`config/clients.json`)
-	err := ClientsConfig.ReadInConfig()
+	ClientsConfig.SetConfigFile("config/clients.json")
+	err = ClientsConfig.ReadInConfig()
 	if err != nil {
 		panic(err)
 	}
