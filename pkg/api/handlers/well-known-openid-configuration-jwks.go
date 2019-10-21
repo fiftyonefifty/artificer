@@ -1,9 +1,10 @@
 package handlers
 
 import (
+	"artificer/pkg/api/models"
 	"artificer/pkg/keyvault"
+	"encoding/json"
 	"net/http"
-
 	"time"
 
 	echo "github.com/labstack/echo/v4"
@@ -18,6 +19,16 @@ func WellKnownOpenidConfigurationJwks(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, cachedItem.WellKnownOpenidConfigurationJwksResponse)
 }
 
+type ClientContainer struct {
+	Clients []models.Client
+}
+
+func GetTestSecret(c echo.Context) (err error) {
+	bundle, err := keyvault.GetSecret("artificer-clients-int")
+	var clients ClientContainer
+	err = json.Unmarshal([]byte(*bundle.Value), &clients)
+	return c.JSON(http.StatusOK, clients)
+}
 func MintTestToken(c echo.Context) (err error) {
 	utcNow := time.Now().UTC().Truncate(time.Minute)
 	utcExpires := utcNow.Add(time.Minute * 31)
