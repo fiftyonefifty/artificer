@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"artificer/pkg/client/clientContext"
 	"artificer/pkg/client/models"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -12,13 +15,18 @@ import (
 	"github.com/pascaldekloe/jwt"
 )
 
-func handleClientCredentialsFlow(c echo.Context) error {
+func handleClientCredentialsFlow(ctx context.Context, c echo.Context) error {
 	req := &ClientCredentialsRequest{}
 	if err := c.Bind(req); err != nil {
 		return err
 	}
 	var client models.Client
-	client = c.Get("_client").(models.Client)
+	var ok bool
+	client, ok = clientContext.FromContext(ctx)
+	if !ok {
+		return errors.New("context.Context doesn't contain client object")
+	}
+	//	client = c.Get("_client").(models.Client)
 
 	//	_, client := clientStore.GetClient(req.ClientID)
 
