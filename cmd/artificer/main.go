@@ -57,9 +57,6 @@ func main() {
 		log.Fatalf("failed to parse env: %v\n", err.Error())
 	}
 
-	// Creating a new Echo instance.
-	e := echo.New()
-
 	keyVaultDone := make(chan bool, 1)
 	clientConfigDone := make(chan bool, 1)
 	go func() {
@@ -97,6 +94,8 @@ func main() {
 	}
 	c.Start()
 
+	// Creating a new Echo instance.
+	e := echo.New()
 	// Configure Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
@@ -105,12 +104,13 @@ func main() {
 		AllowMethods: []string{http.MethodGet, http.MethodPost},
 	}))
 
-	e.File("/", "static/index.html")
+	//e.File("/", "static/index.html")
 
 	// in order to serve static assets
-	e.Static("/static", "static")
+	//e.Static("/static", "static")
 
 	// Route / to handler function
+	e.GET("/", handlers.Index)
 	e.GET("/health", handlers.HealthCheck)
 	e.GET("/.well-known/openid-configuration", handlers.WellKnownOpenidConfiguration)
 	e.GET("/.well-known/openid-configuration/jwks", handlers.WellKnownOpenidConfigurationJwks)
