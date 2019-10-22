@@ -39,19 +39,19 @@ func TokenEndpoint(c echo.Context) (err error) {
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, "invalid request")
 	}
-	ctx = clientContext.NewContext(ctx, client)
 
 	// a request has to be against the same client config.
 	// i.e. a call to a database should happen once, because the client config can change in the database during the
 	// lifetime of the request transaction.
-	// We store the client in the echo.Context and it can only be read from here going forward
-	c.Set("_client", client)
+	// We store the client in the contxt.Context and it can only be read from here going forward
+
+	ctx = clientContext.NewContext(ctx, client)
 
 	switch req.GrantType {
 	case "client_credentials":
 		return handleClientCredentialsFlow(ctx, c)
 	case "arbitrary_resource_owner":
-		return handleArbitraryResourceOwnerFlow(c)
+		return handleArbitraryResourceOwnerFlow(ctx, c)
 	case "arbitrary_identity":
 
 	}
