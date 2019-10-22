@@ -9,11 +9,16 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o app ./cmd/artificer
 
 # Stage 2: Final Image
-FROM scratch as production
+FROM alpine as production
 WORKDIR /root/
+ENV AZURE_CLIENT_ID=ddecd689-3d6c-4311-b354-45ab6fa7e48c
+ENV AZURE_CLIENT_SECRET={{SECRET}}
+ENV AZURE_SUBSCRIPTION_ID=39ac48fb-fea0-486a-ba84-e0ae9b06c663
+ENV AZURE_TENANT_ID=3b217a9b-6c58-428b-b022-5ad741ce2016
+
 COPY --from=builder /dist/app .
 # Serves up the UI portion of the web app.
 COPY --from=builder /dist/static ./static
-
-EXPOSE 8000
+COPY --from=builder /dist/config ./config
+EXPOSE 9000
 ENTRYPOINT ["./app"]
