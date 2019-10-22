@@ -1,8 +1,7 @@
 package handlers
 
 import (
-	"artificer/pkg/api/models"
-	"artificer/pkg/config"
+	"artificer/pkg/client/models"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
 	"encoding/json"
@@ -19,8 +18,7 @@ func buildArbitraryResourceOwnerClaims(req *ArbitraryResourceOwnerRequest) (err 
 		return
 	}
 
-	var client *models.Client
-	client = config.ClientMap[req.ClientID]
+	client := req.Client
 
 	var objmap map[string]interface{}
 	err = json.Unmarshal([]byte(req.ArbitraryClaims), &objmap)
@@ -133,6 +131,9 @@ func handleArbitraryResourceOwnerFlow(c echo.Context) (err error) {
 	if err = c.Bind(req); err != nil {
 		return
 	}
+	req.ClientID = "<purposefully set to bad, use req.Client>"
+	req.Client = c.Get("_client").(models.Client)
+
 	err, tokenBuildRequest := buildArbitraryResourceOwnerClaims(req)
 	if err != nil {
 		return err
