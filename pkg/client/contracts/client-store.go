@@ -1,7 +1,7 @@
 package contracts
 
 import (
-	"artificer/pkg/api/models"
+	"artificer/pkg/client/models"
 )
 
 type IClientStore interface {

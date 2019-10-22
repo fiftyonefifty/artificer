@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"artificer/pkg/api/models"
+	"artificer/pkg/client/loaders"
+	"artificer/pkg/client/models"
 	"artificer/pkg/keyvault"
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -24,9 +24,13 @@ type ClientContainer struct {
 }
 
 func GetTestSecret(c echo.Context) (err error) {
-	bundle, err := keyvault.GetSecret("artificer-clients-int")
-	var clients ClientContainer
-	err = json.Unmarshal([]byte(*bundle.Value), &clients)
+	var clients []models.Client
+
+	clients, err = loaders.LoadClientConfigFromKeyVault()
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err.Error())
+
+	}
 	return c.JSON(http.StatusOK, clients)
 }
 func MintTestToken(c echo.Context) (err error) {

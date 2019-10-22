@@ -2,6 +2,7 @@ package main
 
 import (
 	"artificer/pkg/api/handlers"
+	"artificer/pkg/client/loaders"
 	"artificer/pkg/config"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
@@ -35,7 +36,13 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	config.InitializeClientConfig()
+
+	useKeyVault := viper.GetBool("clientConfig.useKeyVault") // true|false
+
+	loaders.InitializeClientConfig(loaders.ClientConfigOptions{
+		RootFolder:  ProcessDirectory,
+		UseKeyVault: useKeyVault,
+	})
 }
 
 func Alive() {
@@ -63,7 +70,7 @@ func main() {
 	}()
 	go func() {
 		fmt.Println("Startup Enter ... LoadClientConfig")
-		config.LoadClientConfig(ProcessDirectory)
+		loaders.LoadClientConfig()
 		fmt.Println("Startup Complete ... LoadClientConfig")
 		clientConfigDone <- true
 	}()
@@ -82,7 +89,7 @@ func main() {
 
 	_, err = c.AddFunc(cronSpec, func() {
 		fmt.Println("CRON Enter ... LoadClientConfig")
-		config.LoadClientConfig(ProcessDirectory)
+		loaders.LoadClientConfig()
 		fmt.Println("CRON Complete ... LoadClientConfig")
 	})
 	if err != nil {

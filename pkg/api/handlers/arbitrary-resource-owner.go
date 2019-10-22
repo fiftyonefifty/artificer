@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"artificer/pkg/api/models"
+	"artificer/pkg/client/models"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
 	"encoding/json"

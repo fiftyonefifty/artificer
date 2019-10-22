@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"artificer/pkg/config"
+	"artificer/pkg/client/loaders"
 )
 
 var (
-	clientStore = config.NewClientStore()
+	clientStore = loaders.NewClientStore()
 )

@@ -1,22 +1,20 @@
-package config
+package loaders
 
 import (
-	"artificer/pkg/api/contracts"
-	"artificer/pkg/api/models"
+	"artificer/pkg/client/contracts"
+	"artificer/pkg/client/loaders/filesystem"
+	"artificer/pkg/client/loaders/keyvault"
+	"artificer/pkg/client/models"
 	"artificer/pkg/util"
-
-	"fmt"
+	"log"
 	"sort"
-	"strings"
-
-	"path"
-
 	"sync"
-
-	"github.com/spf13/viper"
-	"github.com/xeipuuv/gojsonschema"
 )
 
+type ClientConfigOptions struct {
+	RootFolder  string
+	UseKeyVault bool
+}
 type InMemoryClientStore struct {
 	ClientMapA map[string]*models.Client
 	ClientMapB map[string]*models.Client
@@ -24,12 +22,12 @@ type InMemoryClientStore struct {
 }
 
 var (
-	ClientsConfig        *viper.Viper
-	Clients              []models.Client
+	clients              []models.Client
 	pInMemoryClientStore *InMemoryClientStore = &InMemoryClientStore{}
 	mutex                                     = &sync.Mutex{}
 	clientRequest        chan *clientConfigRequestOp
 	queueLength          int = 5
+	clientConfigOptions  ClientConfigOptions
 )
 
 type clientConfigResponse struct {
@@ -41,14 +39,14 @@ type clientConfigRequestOp struct { // bank operation: deposit or withdraw
 	confirm chan clientConfigResponse // confirmation channel
 }
 
-func InitializeClientConfig() {
+func InitializeClientConfig(options ClientConfigOptions) {
 	// mutex is here to make sure that we only do this once
 	mutex.Lock()
 	defer mutex.Unlock()
 	if clientRequest != nil {
 		return
 	}
-
+	clientConfigOptions = options
 	// setup the worker
 	clientRequest = make(chan *clientConfigRequestOp, queueLength)
 	for i := 0; i < queueLength; i++ {
@@ -59,7 +57,7 @@ func InitializeClientConfig() {
 				-- otherwise, fall through to the next case, if any */
 				select {
 				case request := <-clientRequest:
-					found, client := pInMemoryClientStore.GetClientUnsafe(request.Id)
+					found, client := pInMemoryClientStore.getClientUnsafe(request.Id)
 					response := clientConfigResponse{
 						Found: found,
 					}
@@ -78,7 +76,7 @@ func NewClientStore() contracts.IClientStore {
 	return pInMemoryClientStore
 }
 
-func (store InMemoryClientStore) GetClientUnsafe(id string) (found bool, client models.Client) {
+func (store InMemoryClientStore) getClientUnsafe(id string) (found bool, client models.Client) {
 
 	currenClientMap := *store.pCurrent
 
@@ -104,48 +102,29 @@ func (store InMemoryClientStore) GetClient(id string) (found bool, client models
 	return
 }
 
-func ToCanonical(src string) string {
-	var replacer = strings.NewReplacer("\\", "/")
-	str := replacer.Replace(src)
-	return "file:///" + str
+func LoadClientConfigFromKeyVault() (clients []models.Client, err error) {
+	clients, err = keyvault.FetchClientConfigFromKeyVault(clientConfigOptions.RootFolder)
+	return
 }
 
-func LoadClientConfig(processDirectory string) {
+func LoadClientConfig() {
 
-	schemaPath := ToCanonical(path.Join(processDirectory, "config/clients.schema.json"))
-	documentPath := ToCanonical(path.Join(processDirectory, "config/clients.json"))
+	var err error
+	if clientConfigOptions.UseKeyVault {
+		clients, err = keyvault.FetchClientConfigFromKeyVault(clientConfigOptions.RootFolder)
 
-	schemaLoader := gojsonschema.NewReferenceLoader(schemaPath)
-	documentLoader := gojsonschema.NewReferenceLoader(documentPath)
-	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
-	if err != nil {
-		panic(err.Error())
-	}
-	if result.Valid() {
-		fmt.Printf("The document is valid\n")
 	} else {
-		fmt.Printf("The document is not valid. see errors :\n")
-		for _, desc := range result.Errors() {
-			fmt.Printf("- %s\n", desc)
-		}
+		clients, err = filesystem.FetchClientConfigFromFileSystem(clientConfigOptions.RootFolder)
 	}
 
-	ClientsConfig = viper.New()
-	ClientsConfig.SetConfigFile("config/clients.json")
-	err = ClientsConfig.ReadInConfig()
 	if err != nil {
-		panic(err)
-	}
-	ClientsConfig.UnmarshalKey("clients", &Clients)
-	if pInMemoryClientStore.pCurrent == nil || pInMemoryClientStore.pCurrent == &pInMemoryClientStore.ClientMapB {
-		pInMemoryClientStore.pCurrent = &pInMemoryClientStore.ClientMapA
-	} else {
-		pInMemoryClientStore.pCurrent = &pInMemoryClientStore.ClientMapB
+		log.Fatalf("Failed to load client config: useKeyvault: %t,err %s", clientConfigOptions.UseKeyVault, err.Error())
+		return
 	}
 
 	a := make(map[string]*models.Client)
 
-	for _, v := range Clients {
+	for _, v := range clients {
 		a[v.ClientID] = &v
 		sort.Strings(v.AllowedGrantTypes)
 		sort.Strings(v.AllowedScopes)

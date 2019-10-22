@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"artificer/pkg/api/models"
 	"artificer/pkg/api/renderings"
+	"artificer/pkg/client/models"
 	"net/http"
 
 	echo "github.com/labstack/echo/v4"
