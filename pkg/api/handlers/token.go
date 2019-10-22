@@ -35,7 +35,7 @@ func TokenEndpoint(c echo.Context) (err error) {
 	ctx = userip.NewContext(ctx, userIP)
 
 	var client models.Client
-	err, client = validateClient(req)
+	err, client = validateClient(ctx, req)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, "invalid request")
 	}

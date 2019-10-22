@@ -4,6 +4,7 @@ import (
 	"artificer/pkg/client/loaders"
 	"artificer/pkg/client/models"
 	"artificer/pkg/keyvault"
+	"context"
 	"net/http"
 	"time"
 
@@ -24,9 +25,16 @@ type ClientContainer struct {
 }
 
 func GetTestSecret(c echo.Context) (err error) {
+	var (
+		ctx    context.Context
+		cancel context.CancelFunc
+	)
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel() // Cancel ctx as soon as handleSearch returns.
+
 	var clients []models.Client
 
-	clients, err = loaders.LoadClientConfigFromKeyVault()
+	clients, err = loaders.LoadClientConfigFromKeyVault(ctx)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, err.Error())
 

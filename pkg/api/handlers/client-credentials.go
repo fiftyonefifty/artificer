@@ -26,9 +26,6 @@ func handleClientCredentialsFlow(ctx context.Context, c echo.Context) error {
 	if !ok {
 		return errors.New("context.Context doesn't contain client object")
 	}
-	//	client = c.Get("_client").(models.Client)
-
-	//	_, client := clientStore.GetClient(req.ClientID)
 
 	scope := strings.TrimSpace(req.Scope)
 
