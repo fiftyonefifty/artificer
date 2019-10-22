@@ -35,7 +35,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-
+	config.InitializeClientConfig()
 }
 
 func Alive() {

@@ -18,7 +18,7 @@ func buildArbitraryResourceOwnerClaims(req *ArbitraryResourceOwnerRequest) (err 
 		return
 	}
 
-	_, client := clientStore.GetClient(req.ClientID)
+	client := req.Client
 
 	var objmap map[string]interface{}
 	err = json.Unmarshal([]byte(req.ArbitraryClaims), &objmap)
@@ -131,6 +131,9 @@ func handleArbitraryResourceOwnerFlow(c echo.Context) (err error) {
 	if err = c.Bind(req); err != nil {
 		return
 	}
+	req.ClientID = "<purposefully set to bad, use req.Client>"
+	req.Client = c.Get("_client").(models.Client)
+
 	err, tokenBuildRequest := buildArbitraryResourceOwnerClaims(req)
 	if err != nil {
 		return err
