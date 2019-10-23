@@ -2,11 +2,14 @@ package handlers
 
 import (
 	"artificer/pkg/api/renderings"
+	"artificer/pkg/appError"
 	"artificer/pkg/client/clientContext"
 	"artificer/pkg/client/models"
 	"artificer/pkg/userip"
 	"context"
+	"log"
 	"net/http"
+	"time"
 
 	echo "github.com/labstack/echo/v4"
 )
@@ -20,8 +23,7 @@ func TokenEndpoint(c echo.Context) (err error) {
 		ctx    context.Context
 		cancel context.CancelFunc
 	)
-	ctx, cancel = context.WithCancel(context.Background())
-	defer cancel() // Cancel ctx as soon as handleSearch returns.
+	ctx = context.Background()
 
 	req := &TokenRequest{}
 	if err = c.Bind(req); err != nil {
@@ -34,10 +36,20 @@ func TokenEndpoint(c echo.Context) (err error) {
 	}
 	ctx = userip.NewContext(ctx, userIP)
 
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+	defer cancel() // Cancel ctx as soon as handleSearch returns.
+
 	var client models.Client
 	err, client = validateClient(ctx, req)
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, "invalid request")
+		log.Printf("Failed to validate client:%s\n", err.Error())
+		switch err.(type) {
+		case *appError.AppError:
+			p := err.(*appError.AppError)
+			return c.JSON(p.Code, p.Message)
+		default:
+			return c.JSON(http.StatusUnauthorized, err.Error())
+		}
 	}
 
 	// a request has to be against the same client config.

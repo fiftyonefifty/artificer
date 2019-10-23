@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"artificer/pkg/appError"
 	"artificer/pkg/client/models"
 	"artificer/pkg/util"
 	"context"
@@ -10,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/xeipuuv/gojsonschema"
+
+	"net/http"
 )
 
 func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (err error) {
@@ -129,6 +132,13 @@ func validateClient(ctx context.Context, req *TokenRequest) (err error, client m
 		err = errors.New(fmt.Sprintf("client_id: %s does not exist", req.ClientID))
 		fmt.Println(err.Error())
 		return
+	}
+
+	select {
+	case <-ctx.Done():
+		err = appError.New(ctx.Err(), ctx.Err().Error(), http.StatusRequestTimeout)
+		return
+	default:
 	}
 
 	foundSecret := false
