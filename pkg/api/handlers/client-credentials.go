@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"artificer/pkg/appError"
 	"artificer/pkg/client/clientContext"
 	"artificer/pkg/client/models"
 	"artificer/pkg/keyvault"
@@ -15,9 +16,9 @@ import (
 	"github.com/pascaldekloe/jwt"
 )
 
-func handleClientCredentialsFlow(ctx context.Context, c echo.Context) error {
+func handleClientCredentialsFlow(ctx context.Context, c echo.Context) (err error) {
 	req := &ClientCredentialsRequest{}
-	if err := c.Bind(req); err != nil {
+	if err = c.Bind(req); err != nil {
 		return err
 	}
 	var client models.Client
@@ -91,6 +92,9 @@ func handleClientCredentialsFlow(ctx context.Context, c echo.Context) error {
 	token, err := keyvault.MintToken(c, &tokenBuildRequest)
 	if err != nil {
 		return err
+	}
+	if err = appError.CheckForTimeout(ctx); err != nil {
+		return
 	}
 
 	resp := ClientCredentialsResponse{

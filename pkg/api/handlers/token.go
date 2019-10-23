@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"artificer/pkg/api/renderings"
 	"artificer/pkg/appError"
 	"artificer/pkg/client/clientContext"
 	"artificer/pkg/client/models"
@@ -61,14 +60,23 @@ func TokenEndpoint(c echo.Context) (err error) {
 
 	switch req.GrantType {
 	case "client_credentials":
-		return handleClientCredentialsFlow(ctx, c)
+		err = handleClientCredentialsFlow(ctx, c)
 	case "arbitrary_resource_owner":
-		return handleArbitraryResourceOwnerFlow(ctx, c)
-	case "arbitrary_identity":
+		err = handleArbitraryResourceOwnerFlow(ctx, c)
+	default:
+		err = appError.New(http.StatusBadRequest, "should-never-see-this")
+	}
+	if err != nil {
+		log.Printf("Failed grant_type:%s\n", req.GrantType)
+		switch err.(type) {
+		case *appError.AppError:
+			p := err.(*appError.AppError)
+			return c.JSON(p.Code, p.Message)
+		default:
+			return c.JSON(http.StatusUnauthorized, err.Error())
+		}
+	} else {
+		return
+	}
 
-	}
-	resp := renderings.HealthCheckResponse{
-		Status: "Should Never See this",
-	}
-	return c.JSON(http.StatusOK, resp)
 }

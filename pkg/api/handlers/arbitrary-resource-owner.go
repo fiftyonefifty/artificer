@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"artificer/pkg/appError"
 	"artificer/pkg/client/clientContext"
 	"artificer/pkg/client/models"
 	"artificer/pkg/keyvault"
@@ -8,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
@@ -148,7 +150,12 @@ func handleArbitraryResourceOwnerFlow(ctx context.Context, c echo.Context) (err 
 
 	token, err := keyvault.MintToken(c, &tokenBuildRequest)
 	if err != nil {
+		log.Printf("ERROR: %s", err.Error())
+		err = appError.Newf(http.StatusUnauthorized, "Too Many Requests: retry after %d", time.Minute*5)
 		return err
+	}
+	if err = appError.CheckForTimeout(ctx); err != nil {
+		return
 	}
 
 	resp := ClientCredentialsResponse{
