@@ -42,6 +42,7 @@ import (
 
 var (
 	ProcessDirectory string
+	serverConfig     *ServerConfig
 )
 
 func init() {
@@ -161,31 +162,34 @@ func executeEcho() {
 	<-allDoneChannel
 
 	// If you start me up, I'll never stop
-	e.Logger.Fatal(e.Start(":9000"))
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%v", serverConfig.Port)))
 }
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "serves artificer oauth2 server",
+	Long: `serves artificer oauth2 server.
+	Environment Variables Win:
+		AF-key-vault-client-id
+		AF-key-vault-client-secret
+		AF-az-group-name
+		AF-az-subscription-id
+		AF-az-tenant-id
+		AF-port`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("serve called")
-		sc, err := validateVehicleRequest(cmd)
+		var err error
+		serverConfig, err = validateVehicleRequest(cmd)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
 		}
-		config.SetGroupName(sc.AzureGroupName)
-		config.SetTenantID(sc.AzureTenantId)
-		config.SetSubscriptionID(sc.AzureSubscriptionId)
-		config.SetClientID(sc.KeyVaultClientId)
-		config.SetClientSecret(sc.KeyVaultClientSecret)
+		config.SetGroupName(serverConfig.AzureGroupName)
+		config.SetTenantID(serverConfig.AzureTenantId)
+		config.SetSubscriptionID(serverConfig.AzureSubscriptionId)
+		config.SetClientID(serverConfig.KeyVaultClientId)
+		config.SetClientSecret(serverConfig.KeyVaultClientSecret)
 
 		executeEcho()
 	},
@@ -307,7 +311,7 @@ type ServerConfig struct {
 	AzureGroupName       string `cli-required:"true" cli-long:"az-group-name" cli-short:"" cli-default:"" cli-description:"Azure Group Name" validate:"gt=1  & format=alnum_unicode"`
 	AzureSubscriptionId  string `cli-required:"true" cli-long:"az-subscription-id" cli-short:"" cli-default:"" cli-description:"Azure Subscription Id" validate:"gt=1  & format=alnum_unicode"`
 	AzureTenantId        string `cli-required:"true" cli-long:"az-tenant-id" cli-short:"" cli-default:"" cli-description:"Azure Tenant Id" validate:"gt=1  & format=alnum_unicode"`
-	Port                 string `cli-required:"false" cli-long:"port" cli-short:"p" cli-default:"" cli-description:"Artifice Server Port" validate:"gt=1  & format=alnum_unicode"`
+	Port                 string `cli-required:"false" cli-long:"port" cli-short:"p" cli-default:"9000" cli-description:"Artifice Server Port" validate:"gt=1  & format=alnum_unicode"`
 }
 
 func buildServerConfigReflectionData() {
