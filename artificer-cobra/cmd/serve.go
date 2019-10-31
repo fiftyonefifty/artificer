@@ -178,7 +178,7 @@ var serveCmd = &cobra.Command{
 		AF-az-tenant-id
 		AF-port`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("serve called")
+		fmt.Println(splash)
 		var err error
 		serverConfig, err = validateVehicleRequest(cmd)
 		if err != nil {
