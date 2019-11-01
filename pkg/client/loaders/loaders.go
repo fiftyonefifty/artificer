@@ -109,12 +109,10 @@ func LoadClientConfigFromKeyVault(ctx context.Context) (clients []models.Client,
 	return
 }
 
-func LoadClientConfig(ctx context.Context) {
+func LoadClientConfig(ctx context.Context) (err error) {
 
-	var err error
 	if clientConfigOptions.UseKeyVault {
 		clients, err = keyvault.FetchClientConfigFromKeyVault(clientConfigOptions.RootFolder)
-
 	} else {
 		clients, err = filesystem.FetchClientConfigFromFileSystem(clientConfigOptions.RootFolder)
 	}
@@ -137,5 +135,5 @@ func LoadClientConfig(ctx context.Context) {
 		}
 	}
 	pInMemoryClientStore.pCurrent = &a
-
+	return
 }

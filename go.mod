@@ -30,6 +30,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.11.3 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
+	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/jstemmer/go-junit-report v0.0.0-20191003211110-080dff894f9e // indirect
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
@@ -45,10 +46,7 @@ require (
 	github.com/pascaldekloe/jwt v1.6.1-0.20191011205700-9118cfd8bc6d
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/pmylund/go-cache v2.1.0+incompatible
-	github.com/prometheus/client_golang v1.1.0 // indirect
-	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
-	github.com/prometheus/common v0.7.0 // indirect
-	github.com/prometheus/procfs v0.0.5 // indirect
+	github.com/prometheus/client_golang v1.2.1 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/rogpeppe/fastuuid v1.2.0 // indirect
@@ -82,6 +80,7 @@ require (
 	google.golang.org/appengine v1.6.4 // indirect
 	google.golang.org/genproto v0.0.0-20191002211648-c459b9ce5143 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
+	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/square/go-jose.v2 v2.3.1
 )

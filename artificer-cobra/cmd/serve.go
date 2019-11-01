@@ -21,6 +21,7 @@ import (
 	"artificer/pkg/api/handlers"
 	"artificer/pkg/client/loaders"
 	"artificer/pkg/config"
+	"artificer/pkg/health"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
 	"context"
@@ -32,7 +33,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/heptiolabs/healthcheck"
 	"github.com/spf13/cobra"
+
+	"sync"
 
 	echo "github.com/labstack/echo/v4"
 	middleware "github.com/labstack/echo/v4/middleware"
@@ -41,8 +45,10 @@ import (
 )
 
 var (
-	ProcessDirectory string
-	serverConfig     *ServerConfig
+	ProcessDirectory  string
+	serverConfig      *ServerConfig
+	healthCheckRecord HealthCheckRecord
+	checksMutex       sync.RWMutex
 )
 
 func init() {
@@ -72,15 +78,44 @@ func Alive() {
 	fmt.Println(fmt.Sprintf("Alive:%s", now))
 }
 
-func executeEcho() {
+func serveHealthCheck() {
+	healthCheckHandler := healthcheck.NewHandler()
+	// Our app is not happy if we've got more than 100 goroutines running.
+	healthCheckHandler.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(100))
+
+	for _, e := range healthCheckRecord.DnsResolver {
+		// Our app is not ready if we can't resolve our upstream dependency in DNS.
+		healthCheckHandler.AddReadinessCheck(
+			e.Name,
+			healthcheck.DNSResolveCheck(e.DNS, 50*time.Millisecond))
+	}
+	healthCheckHandler.AddReadinessCheck("client-config", health.CreateHealthCheck("client-config"))
+	healthCheckHandler.AddReadinessCheck("keyvault-api", health.CreateHealthCheck("keyvault-api"))
+	go http.ListenAndServe("0.0.0.0:"+serverConfig.HealthCheckPort, healthCheckHandler)
+}
+
+func serveArtificer() {
 
 	var err error
-
+	serveHealthCheck()
 	keyVaultDone := make(chan bool, 1)
 	clientConfigDone := make(chan bool, 1)
 	go func() {
 		fmt.Println("Startup Enter ... DoKeyvaultBackground")
-		keyvault.DoKeyvaultBackground()
+		err := keyvault.DoKeyvaultBackground()
+		if err != nil {
+			health.CheckIn(health.HealthRecord{
+				Name:            "keyvault-api",
+				Healthy:         false,
+				UnhealthyReason: err.Error(),
+			})
+		} else {
+			health.CheckIn(health.HealthRecord{
+				Name:            "keyvault-api",
+				Healthy:         true,
+				UnhealthyReason: "",
+			})
+		}
 		fmt.Println("Startup Complete ... DoKeyvaultBackground")
 		keyVaultDone <- true
 	}()
@@ -93,7 +128,21 @@ func executeEcho() {
 		defer cancel() // Cancel ctx as soon as handleSearch returns.
 
 		fmt.Println("Startup Enter ... LoadClientConfig")
-		loaders.LoadClientConfig(ctx)
+		err := loaders.LoadClientConfig(ctx)
+		if err != nil {
+			health.CheckIn(health.HealthRecord{
+				Name:            "client-config",
+				Healthy:         false,
+				UnhealthyReason: err.Error(),
+			})
+		} else {
+			health.CheckIn(health.HealthRecord{
+				Name:            "client-config",
+				Healthy:         true,
+				UnhealthyReason: "",
+			})
+		}
+
 		fmt.Println("Startup Complete ... LoadClientConfig")
 		clientConfigDone <- true
 	}()
@@ -102,7 +151,20 @@ func executeEcho() {
 	cronSpec := viper.GetString("keyVault.cronSpec") // i.e. "@every 10s"
 	_, err = c.AddFunc(cronSpec, func() {
 		fmt.Println("CRON Enter ... DoKeyvaultBackground")
-		keyvault.DoKeyvaultBackground()
+		err := keyvault.DoKeyvaultBackground()
+		if err != nil {
+			health.CheckIn(health.HealthRecord{
+				Name:            "keyvault-api",
+				Healthy:         false,
+				UnhealthyReason: err.Error(),
+			})
+		} else {
+			health.CheckIn(health.HealthRecord{
+				Name:            "keyvault-api",
+				Healthy:         true,
+				UnhealthyReason: "",
+			})
+		}
 		fmt.Println("CRON Complete ... DoKeyvaultBackground")
 	})
 	if err != nil {
@@ -119,7 +181,20 @@ func executeEcho() {
 		defer cancel() // Cancel ctx as soon as handleSearch returns.
 
 		fmt.Println("CRON Enter ... LoadClientConfig")
-		loaders.LoadClientConfig(ctx)
+		err := loaders.LoadClientConfig(ctx)
+		if err != nil {
+			health.CheckIn(health.HealthRecord{
+				Name:            "client-config",
+				Healthy:         false,
+				UnhealthyReason: err.Error(),
+			})
+		} else {
+			health.CheckIn(health.HealthRecord{
+				Name:            "client-config",
+				Healthy:         true,
+				UnhealthyReason: "",
+			})
+		}
 		fmt.Println("CRON Complete ... LoadClientConfig")
 	})
 	if err != nil {
@@ -165,6 +240,14 @@ func executeEcho() {
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%v", serverConfig.Port)))
 }
 
+type DNSResolverRecord struct {
+	Name string
+	DNS  string
+}
+type HealthCheckRecord struct {
+	DnsResolver []DNSResolverRecord
+}
+
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -191,7 +274,11 @@ var serveCmd = &cobra.Command{
 		config.SetClientID(serverConfig.KeyVaultClientId)
 		config.SetClientSecret(serverConfig.KeyVaultClientSecret)
 
-		executeEcho()
+		err = viper.UnmarshalKey("healthCheck", &healthCheckRecord)
+		for _, e := range healthCheckRecord.DnsResolver {
+			fmt.Printf("%s:%s", e.Name, e.DNS)
+		}
+		serveArtificer()
 	},
 }
 
@@ -230,6 +317,10 @@ func init() {
 
 	cliFlags = sc.CliFlags_Port()
 	addFlag(serveCmd, cliFlags)
+
+	cliFlags = sc.CliFlags_HealthCheckPort()
+	addFlag(serveCmd, cliFlags)
+
 }
 
 func validateVehicleRequest(cmd *cobra.Command) (sc *ServerConfig, err error) {
@@ -238,59 +329,47 @@ func validateVehicleRequest(cmd *cobra.Command) (sc *ServerConfig, err error) {
 	)
 	sc = &ServerConfig{}
 
-	val = viper.GetString("AF-key-vault-client-id")
-	if len(val) == 0 {
-		val, err = cmd.Flags().GetString("key-vault-client-id")
-		if err != nil {
-			return
-		}
-		sc.KeyVaultClientId = val
+	val, err = cmd.Flags().GetString("key-vault-client-id")
+	if err != nil || len(val) == 0 {
+		val = viper.GetString("AF-key-vault-client-id")
 	}
+	sc.KeyVaultClientId = val
 
-	val = viper.GetString("AF-key-vault-client-secret")
-	if len(val) == 0 {
-		val, err = cmd.Flags().GetString("key-vault-client-secret")
-		if err != nil {
-			return
-		}
-		sc.KeyVaultClientSecret = val
+	val, err = cmd.Flags().GetString("key-vault-client-secret")
+	if err != nil || len(val) == 0 {
+		val = viper.GetString("AF-key-vault-client-secret")
 	}
+	sc.KeyVaultClientSecret = val
 
-	val = viper.GetString("AF-az-group-name")
-	if len(val) == 0 {
-		val, err = cmd.Flags().GetString("az-group-name")
-		if err != nil {
-			return
-		}
-		sc.AzureGroupName = val
+	val, err = cmd.Flags().GetString("az-group-name")
+	if err != nil || len(val) == 0 {
+		val = viper.GetString("AF-az-group-name")
 	}
+	sc.AzureGroupName = val
 
-	val = viper.GetString("AF-az-subscription-id")
-	if len(val) == 0 {
-		val, err = cmd.Flags().GetString("az-subscription-id")
-		if err != nil {
-			return
-		}
-		sc.AzureSubscriptionId = val
+	val, err = cmd.Flags().GetString("az-subscription-id")
+	if err != nil || len(val) == 0 {
+		val = viper.GetString("AF-az-subscription-id")
 	}
+	sc.AzureSubscriptionId = val
 
-	val = viper.GetString("AF-az-tenant-id")
-	if len(val) == 0 {
-		val, err = cmd.Flags().GetString("az-tenant-id")
-		if err != nil {
-			return
-		}
-		sc.AzureTenantId = val
+	val, err = cmd.Flags().GetString("az-tenant-id")
+	if err != nil || len(val) == 0 {
+		val = viper.GetString("AF-az-tenant-id")
 	}
+	sc.AzureTenantId = val
 
-	val = viper.GetString("AF-port")
-	if len(val) == 0 {
-		val, err = cmd.Flags().GetString("port")
-		if err != nil {
-			return
-		}
-		sc.Port = val
+	val, err = cmd.Flags().GetString("port")
+	if err != nil || len(val) == 0 {
+		panic("port is not optional")
 	}
+	sc.Port = val
+
+	val, err = cmd.Flags().GetString("healthcheck-port")
+	if err != nil || len(val) == 0 {
+		panic("healthcheck-port is not optional")
+	}
+	sc.HealthCheckPort = val
 
 	return
 }
@@ -303,6 +382,7 @@ var (
 	_AzureSubscriptionIdStructField  reflect.StructField
 	_AzureTenantIdStructField        reflect.StructField
 	_PortStructField                 reflect.StructField
+	_HealthCheckPortStructField      reflect.StructField
 )
 
 type ServerConfig struct {
@@ -311,7 +391,8 @@ type ServerConfig struct {
 	AzureGroupName       string `cli-required:"true" cli-long:"az-group-name" cli-short:"" cli-default:"" cli-description:"Azure Group Name" validate:"gt=1  & format=alnum_unicode"`
 	AzureSubscriptionId  string `cli-required:"true" cli-long:"az-subscription-id" cli-short:"" cli-default:"" cli-description:"Azure Subscription Id" validate:"gt=1  & format=alnum_unicode"`
 	AzureTenantId        string `cli-required:"true" cli-long:"az-tenant-id" cli-short:"" cli-default:"" cli-description:"Azure Tenant Id" validate:"gt=1  & format=alnum_unicode"`
-	Port                 string `cli-required:"false" cli-long:"port" cli-short:"p" cli-default:"9000" cli-description:"Artifice Server Port" validate:"gt=1  & format=alnum_unicode"`
+	Port                 string `cli-required:"false" cli-long:"port" cli-short:"p" cli-default:"" cli-description:"Artifice Server Port" validate:"gt=1  & format=alnum_unicode"`
+	HealthCheckPort      string `cli-required:"false" cli-long:"healthcheck-port" cli-short:"" cli-default:"" cli-description:"Artifice Server Port" validate:"gt=1  & format=alnum_unicode"`
 }
 
 func buildServerConfigReflectionData() {
@@ -323,6 +404,7 @@ func buildServerConfigReflectionData() {
 		_AzureSubscriptionIdStructField, _ = _ServerConfigType.FieldByName("AzureSubscriptionId")
 		_AzureTenantIdStructField, _ = _ServerConfigType.FieldByName("AzureTenantId")
 		_PortStructField, _ = _ServerConfigType.FieldByName("Port")
+		_HealthCheckPortStructField, _ = _ServerConfigType.FieldByName("HealthCheckPort")
 	}
 }
 func (m *ServerConfig) CliFlags_KeyVaultClientId() *cliFlags {
@@ -342,6 +424,9 @@ func (m *ServerConfig) CliFlags_AzureTenantId() *cliFlags {
 }
 func (m *ServerConfig) CliFlags_Port() *cliFlags {
 	return m.getWellknownCliFlags(&_PortStructField)
+}
+func (m *ServerConfig) CliFlags_HealthCheckPort() *cliFlags {
+	return m.getWellknownCliFlags(&_HealthCheckPortStructField)
 }
 func (m *ServerConfig) getWellknownCliFlags(sf *reflect.StructField) *cliFlags {
 	buildServerConfigReflectionData()
