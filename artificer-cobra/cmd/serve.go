@@ -81,16 +81,21 @@ func Alive() {
 }
 
 func serveHealthCheck() {
+	health.CheckIn(health.HealthRecord{
+		Name:            "keyvault-api",
+		Healthy:         false,
+		UnhealthyReason: "Initial stat is always false",
+	})
+	health.CheckIn(health.HealthRecord{
+		Name:            "client-config",
+		Healthy:         false,
+		UnhealthyReason: "Initial stat is always false",
+	})
+
 	healthCheckHandler := healthcheck.NewHandler()
 	// Our app is not happy if we've got more than 100 goroutines running.
 	healthCheckHandler.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(100))
 
-	for _, e := range healthCheckRecord.DnsResolver {
-		// Our app is not ready if we can't resolve our upstream dependency in DNS.
-		healthCheckHandler.AddReadinessCheck(
-			e.Name,
-			healthcheck.DNSResolveCheck(e.DNS, 50*time.Millisecond))
-	}
 	healthCheckHandler.AddReadinessCheck("client-config", health.CreateHealthCheck("client-config"))
 	healthCheckHandler.AddReadinessCheck("keyvault-api", health.CreateHealthCheck("keyvault-api"))
 	go http.ListenAndServe("0.0.0.0:"+serverConfig.HealthCheckPort, healthCheckHandler)
