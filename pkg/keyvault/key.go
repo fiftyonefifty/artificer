@@ -327,7 +327,7 @@ func GetCachedKeyVersions() (cachedResponse CachedKeyVersions, err error) {
 	cachedItem, found = cache.Get(cacheKey)
 
 	if !found {
-		err = DoKeyvaultBackground()
+		err = DoKeyVaultBackground()
 		if err != nil {
 			log.Fatalf("failed to DoKeyvaultBackground: %v\n", err.Error())
 			return
@@ -343,7 +343,7 @@ func GetCachedKeyVersions() (cachedResponse CachedKeyVersions, err error) {
 	return
 }
 
-func DoKeyvaultBackground() (err error) {
+func DoKeyVaultBackground() (err error) {
 	now := time.Now().UTC()
 	fmt.Println(fmt.Sprintf("Start-DoKeyvaultBackground:%s", now))
 	ctx := context.Background()

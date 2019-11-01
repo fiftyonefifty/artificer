@@ -21,8 +21,10 @@ import (
 	"artificer/pkg/api/handlers"
 	"artificer/pkg/client/loaders"
 	"artificer/pkg/config"
+	"artificer/pkg/cronex"
 	"artificer/pkg/health"
 	"artificer/pkg/keyvault"
+
 	"artificer/pkg/util"
 	"context"
 	"log"
@@ -94,109 +96,65 @@ func serveHealthCheck() {
 	go http.ListenAndServe("0.0.0.0:"+serverConfig.HealthCheckPort, healthCheckHandler)
 }
 
+func executeKeyVaultFetch() {
+	fmt.Println("CRON Enter ... DoKeyvaultBackground")
+	err := keyvault.DoKeyVaultBackground()
+	if err != nil {
+		health.CheckIn(health.HealthRecord{
+			Name:            "keyvault-api",
+			Healthy:         false,
+			UnhealthyReason: err.Error(),
+		})
+	} else {
+		health.CheckIn(health.HealthRecord{
+			Name:            "keyvault-api",
+			Healthy:         true,
+			UnhealthyReason: "",
+		})
+	}
+	fmt.Println("CRON Complete ... DoKeyvaultBackground")
+}
+func executeLoadClientConfig() {
+	var (
+		ctx    context.Context
+		cancel context.CancelFunc
+	)
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel() // Cancel ctx as soon as handleSearch returns.
+
+	fmt.Println("CRON Enter ... LoadClientConfig")
+	err := loaders.LoadClientConfig(ctx)
+	if err != nil {
+		health.CheckIn(health.HealthRecord{
+			Name:            "client-config",
+			Healthy:         false,
+			UnhealthyReason: err.Error(),
+		})
+	} else {
+		health.CheckIn(health.HealthRecord{
+			Name:            "client-config",
+			Healthy:         true,
+			UnhealthyReason: "",
+		})
+	}
+	fmt.Println("CRON Complete ... LoadClientConfig")
+}
 func serveArtificer() {
 
 	var err error
 	serveHealthCheck()
 	keyVaultDone := make(chan bool, 1)
 	clientConfigDone := make(chan bool, 1)
-	go func() {
-		fmt.Println("Startup Enter ... DoKeyvaultBackground")
-		err := keyvault.DoKeyvaultBackground()
-		if err != nil {
-			health.CheckIn(health.HealthRecord{
-				Name:            "keyvault-api",
-				Healthy:         false,
-				UnhealthyReason: err.Error(),
-			})
-		} else {
-			health.CheckIn(health.HealthRecord{
-				Name:            "keyvault-api",
-				Healthy:         true,
-				UnhealthyReason: "",
-			})
-		}
-		fmt.Println("Startup Complete ... DoKeyvaultBackground")
-		keyVaultDone <- true
-	}()
-	go func() {
-		var (
-			ctx    context.Context
-			cancel context.CancelFunc
-		)
-		ctx, cancel = context.WithCancel(context.Background())
-		defer cancel() // Cancel ctx as soon as handleSearch returns.
-
-		fmt.Println("Startup Enter ... LoadClientConfig")
-		err := loaders.LoadClientConfig(ctx)
-		if err != nil {
-			health.CheckIn(health.HealthRecord{
-				Name:            "client-config",
-				Healthy:         false,
-				UnhealthyReason: err.Error(),
-			})
-		} else {
-			health.CheckIn(health.HealthRecord{
-				Name:            "client-config",
-				Healthy:         true,
-				UnhealthyReason: "",
-			})
-		}
-
-		fmt.Println("Startup Complete ... LoadClientConfig")
-		clientConfigDone <- true
-	}()
 
 	c := cron.New()
 	cronSpec := viper.GetString("keyVault.cronSpec") // i.e. "@every 10s"
-	_, err = c.AddFunc(cronSpec, func() {
-		fmt.Println("CRON Enter ... DoKeyvaultBackground")
-		err := keyvault.DoKeyvaultBackground()
-		if err != nil {
-			health.CheckIn(health.HealthRecord{
-				Name:            "keyvault-api",
-				Healthy:         false,
-				UnhealthyReason: err.Error(),
-			})
-		} else {
-			health.CheckIn(health.HealthRecord{
-				Name:            "keyvault-api",
-				Healthy:         true,
-				UnhealthyReason: "",
-			})
-		}
-		fmt.Println("CRON Complete ... DoKeyvaultBackground")
-	})
+	_, err = cronex.AddFunc(c, true, keyVaultDone, cronSpec, executeKeyVaultFetch)
 	if err != nil {
 		panic(err.Error())
 	}
 	cronSpec = viper.GetString("clientConfig.cronSpec") // i.e. "@every 5min"
 
-	_, err = c.AddFunc(cronSpec, func() {
-		var (
-			ctx    context.Context
-			cancel context.CancelFunc
-		)
-		ctx, cancel = context.WithCancel(context.Background())
-		defer cancel() // Cancel ctx as soon as handleSearch returns.
-
-		fmt.Println("CRON Enter ... LoadClientConfig")
-		err := loaders.LoadClientConfig(ctx)
-		if err != nil {
-			health.CheckIn(health.HealthRecord{
-				Name:            "client-config",
-				Healthy:         false,
-				UnhealthyReason: err.Error(),
-			})
-		} else {
-			health.CheckIn(health.HealthRecord{
-				Name:            "client-config",
-				Healthy:         true,
-				UnhealthyReason: "",
-			})
-		}
-		fmt.Println("CRON Complete ... LoadClientConfig")
-	})
+	_, err = cronex.AddFunc(c, true, clientConfigDone, cronSpec, executeLoadClientConfig)
 	if err != nil {
 		panic(err.Error())
 	}
