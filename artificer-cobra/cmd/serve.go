@@ -24,7 +24,6 @@ import (
 	"artificer/pkg/cronex"
 	"artificer/pkg/health"
 	"artificer/pkg/keyvault"
-
 	"artificer/pkg/util"
 	"context"
 	"log"
@@ -50,6 +49,8 @@ var (
 	ProcessDirectory  string
 	serverConfig      *ServerConfig
 	healthCheckRecord HealthCheckRecord
+	keyVaultConfig    KeyVaultConfig
+	clientConfig      ClientConfig
 	checksMutex       sync.RWMutex
 )
 
@@ -105,11 +106,20 @@ func executeKeyVaultFetch() {
 	fmt.Println("CRON Enter ... DoKeyvaultBackground")
 	err := keyvault.DoKeyVaultBackground()
 	if err != nil {
-		health.CheckIn(health.HealthRecord{
-			Name:            "keyvault-api",
-			Healthy:         false,
-			UnhealthyReason: err.Error(),
-		})
+		ori, ok := health.GetHealthRecord("keyvault-api")
+		if ok && ori != nil && ori.Healthy {
+			now := time.Now().UTC()
+			diff := now.Sub(ori.LastHealthyTime)
+			diffSeconds := diff.Seconds()
+			if diffSeconds >= float64(clientConfig.AllowedUnhealthyDuration) {
+				// too much bad going on here.
+				health.CheckIn(health.HealthRecord{
+					Name:            "keyvault-api",
+					Healthy:         false,
+					UnhealthyReason: err.Error(),
+				})
+			}
+		}
 	} else {
 		health.CheckIn(health.HealthRecord{
 			Name:            "keyvault-api",
@@ -130,11 +140,21 @@ func executeLoadClientConfig() {
 	fmt.Println("CRON Enter ... LoadClientConfig")
 	err := loaders.LoadClientConfig(ctx)
 	if err != nil {
-		health.CheckIn(health.HealthRecord{
-			Name:            "client-config",
-			Healthy:         false,
-			UnhealthyReason: err.Error(),
-		})
+		ori, ok := health.GetHealthRecord("client-config")
+		if ok && ori != nil && ori.Healthy {
+			now := time.Now().UTC()
+			diff := now.Sub(ori.LastHealthyTime)
+			if diff.Seconds() >= float64(clientConfig.AllowedUnhealthyDuration) {
+				// too much bad going on here.
+				health.CheckIn(health.HealthRecord{
+					Name:            "client-config",
+					Healthy:         false,
+					UnhealthyReason: err.Error(),
+				})
+			}
+			log.Println("Err: executeLoadClientConfig")
+		}
+
 	} else {
 		health.CheckIn(health.HealthRecord{
 			Name:            "client-config",
@@ -203,6 +223,20 @@ func serveArtificer() {
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%v", serverConfig.Port)))
 }
 
+type KeyVaultConfig struct {
+	ClientId                 string
+	KeyVaultUrl              string
+	KeyIdentifier            string
+	CronSpec                 string
+	AllowedUnhealthyDuration int
+}
+type ClientConfig struct {
+	UseKeyVault              bool
+	KeyVaultSecretName       string
+	CronSpec                 string
+	AllowedUnhealthyDuration int
+}
+
 type DNSResolverRecord struct {
 	Name string
 	DNS  string
@@ -238,9 +272,22 @@ var serveCmd = &cobra.Command{
 		config.SetClientSecret(serverConfig.KeyVaultClientSecret)
 
 		err = viper.UnmarshalKey("healthCheck", &healthCheckRecord)
+		if err != nil {
+			panic(err)
+		}
 		for _, e := range healthCheckRecord.DnsResolver {
 			fmt.Printf("%s:%s", e.Name, e.DNS)
 		}
+
+		err = viper.UnmarshalKey("keyVault", &keyVaultConfig)
+		if err != nil {
+			panic(err)
+		}
+		err = viper.UnmarshalKey("clientConfig", &clientConfig)
+		if err != nil {
+			panic(err)
+		}
+
 		serveArtificer()
 	},
 }

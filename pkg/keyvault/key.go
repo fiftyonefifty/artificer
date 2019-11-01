@@ -58,14 +58,19 @@ func getKeysClient() azKeyvault.BaseClient {
 func GetSecret(name string) (result keyvault.SecretBundle, err error) {
 	ctx := context.Background()
 	keyClient := getKeysClient()
-	return keyClient.GetSecret(ctx, "https://P7KeyValut.vault.azure.net/", name, "")
+	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl") //"https://P7KeyValut.vault.azure.net/"
+
+	return keyClient.GetSecret(ctx, keyVaultUrl, name, "")
 }
 
 func GetKeysVersion(ctx context.Context) (result azKeyvault.KeyListResultPage, err error) {
 
 	keyClient := getKeysClient()
 	var maxResults int32 = 10
-	result, err = keyClient.GetKeyVersions(ctx, "https://P7KeyValut.vault.azure.net/", "P7IdentityServer4SelfSigned", &maxResults)
+	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")     //"https://P7KeyValut.vault.azure.net/"
+	keyIdentifier := viper.GetString("keyVault.KeyIdentifier") //"P7IdentityServer4SelfSigned"
+
+	result, err = keyClient.GetKeyVersions(ctx, keyVaultUrl, keyIdentifier, &maxResults)
 	return
 }
 
@@ -117,7 +122,10 @@ func RSA256AzureSign(ctx context.Context, data []byte) (kid *string, signature *
 
 	sEnc := util.ByteArraySha256Encode64(data)
 
-	keyOperationResult, err := keyClient.Sign(ctx, "https://P7KeyValut.vault.azure.net/", "P7IdentityServer4SelfSigned", "", keyvault.KeySignParameters{
+	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")     //"https://P7KeyValut.vault.azure.net/"
+	keyIdentifier := viper.GetString("keyVault.KeyIdentifier") //"P7IdentityServer4SelfSigned"
+
+	keyOperationResult, err := keyClient.Sign(ctx, keyVaultUrl, keyIdentifier, "", keyvault.KeySignParameters{
 		Algorithm: azKeyvault.RS256,
 		Value:     &sEnc,
 	})
