@@ -82,6 +82,7 @@ func Alive() {
 }
 
 func serveHealthCheck() {
+
 	health.CheckIn(health.HealthRecord{
 		Name:            "keyvault-api",
 		Healthy:         false,
@@ -99,7 +100,17 @@ func serveHealthCheck() {
 
 	healthCheckHandler.AddReadinessCheck("client-config", health.CreateHealthCheck("client-config"))
 	healthCheckHandler.AddReadinessCheck("keyvault-api", health.CreateHealthCheck("keyvault-api"))
-	go http.ListenAndServe("0.0.0.0:"+serverConfig.HealthCheckPort, healthCheckHandler)
+
+	go func() {
+		fmt.Println(splashHealthCheck)
+		addr := "0.0.0.0:" + serverConfig.HealthCheckPort
+		fmt.Printf("Healthcheck listening on %s\n", addr)
+		err := http.ListenAndServe(addr, healthCheckHandler)
+		if err != nil {
+			log.Panic(err)
+		}
+	}()
+
 }
 
 func executeKeyVaultFetch() {
@@ -165,9 +176,9 @@ func executeLoadClientConfig() {
 	fmt.Println("CRON Complete ... LoadClientConfig")
 }
 func serveArtificer() {
-
-	var err error
 	serveHealthCheck()
+	var err error
+
 	keyVaultDone := make(chan bool, 1)
 	clientConfigDone := make(chan bool, 1)
 

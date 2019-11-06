@@ -20,7 +20,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	echo "github.com/labstack/echo/v4"
 	"github.com/pascaldekloe/jwt"
-	gocache "github.com/pmylund/go-cache"
+	gocache "github.com/ghstahl/go-syncmap-cache"
 	"github.com/spf13/viper"
 )
 

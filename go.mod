@@ -20,6 +20,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/creack/pty v1.1.9 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/ghstahl/go-syncmap-cache v2.1.0+incompatible
 	github.com/go-openapi/runtime v0.19.4
 	github.com/gobuffalo/envy v1.7.1
 	github.com/gogo/protobuf v1.3.0 // indirect
