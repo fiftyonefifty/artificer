@@ -21,6 +21,7 @@ import (
 	"artificer/pkg/api/handlers"
 	"artificer/pkg/client/loaders"
 	"artificer/pkg/config"
+	"artificer/pkg/cronex"
 	"artificer/pkg/health"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
@@ -48,6 +49,8 @@ var (
 	ProcessDirectory  string
 	serverConfig      *ServerConfig
 	healthCheckRecord HealthCheckRecord
+	keyVaultConfig    KeyVaultConfig
+	clientConfig      ClientConfig
 	checksMutex       sync.RWMutex
 )
 
@@ -79,124 +82,115 @@ func Alive() {
 }
 
 func serveHealthCheck() {
+
+	health.CheckIn(health.HealthRecord{
+		Name:            "keyvault-api",
+		Healthy:         false,
+		UnhealthyReason: "Initial stat is always false",
+	})
+	health.CheckIn(health.HealthRecord{
+		Name:            "client-config",
+		Healthy:         false,
+		UnhealthyReason: "Initial stat is always false",
+	})
+
 	healthCheckHandler := healthcheck.NewHandler()
 	// Our app is not happy if we've got more than 100 goroutines running.
 	healthCheckHandler.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(100))
 
-	for _, e := range healthCheckRecord.DnsResolver {
-		// Our app is not ready if we can't resolve our upstream dependency in DNS.
-		healthCheckHandler.AddReadinessCheck(
-			e.Name,
-			healthcheck.DNSResolveCheck(e.DNS, 50*time.Millisecond))
-	}
 	healthCheckHandler.AddReadinessCheck("client-config", health.CreateHealthCheck("client-config"))
 	healthCheckHandler.AddReadinessCheck("keyvault-api", health.CreateHealthCheck("keyvault-api"))
-	go http.ListenAndServe("0.0.0.0:"+serverConfig.HealthCheckPort, healthCheckHandler)
+
+	go func() {
+		fmt.Println(splashHealthCheck)
+		addr := "0.0.0.0:" + serverConfig.HealthCheckPort
+		fmt.Printf("Healthcheck listening on %s\n", addr)
+		err := http.ListenAndServe(addr, healthCheckHandler)
+		if err != nil {
+			log.Panic(err)
+		}
+	}()
+
 }
 
-func serveArtificer() {
+func executeKeyVaultFetch() {
+	fmt.Println("CRON Enter ... DoKeyvaultBackground")
+	err := keyvault.DoKeyVaultBackground()
+	if err != nil {
+		ori, ok := health.GetHealthRecord("keyvault-api")
+		if ok && ori != nil && ori.Healthy {
+			now := time.Now().UTC()
+			diff := now.Sub(ori.LastHealthyTime)
+			diffSeconds := diff.Seconds()
+			if diffSeconds >= float64(clientConfig.AllowedUnhealthyDuration) {
+				// too much bad going on here.
+				health.CheckIn(health.HealthRecord{
+					Name:            "keyvault-api",
+					Healthy:         false,
+					UnhealthyReason: err.Error(),
+				})
+			}
+		}
+	} else {
+		health.CheckIn(health.HealthRecord{
+			Name:            "keyvault-api",
+			Healthy:         true,
+			UnhealthyReason: "",
+		})
+	}
+	fmt.Println("CRON Complete ... DoKeyvaultBackground")
+}
+func executeLoadClientConfig() {
+	var (
+		ctx    context.Context
+		cancel context.CancelFunc
+	)
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel() // Cancel ctx as soon as handleSearch returns.
 
-	var err error
+	fmt.Println("CRON Enter ... LoadClientConfig")
+	err := loaders.LoadClientConfig(ctx)
+	if err != nil {
+		ori, ok := health.GetHealthRecord("client-config")
+		if ok && ori != nil && ori.Healthy {
+			now := time.Now().UTC()
+			diff := now.Sub(ori.LastHealthyTime)
+			if diff.Seconds() >= float64(clientConfig.AllowedUnhealthyDuration) {
+				// too much bad going on here.
+				health.CheckIn(health.HealthRecord{
+					Name:            "client-config",
+					Healthy:         false,
+					UnhealthyReason: err.Error(),
+				})
+			}
+			log.Println("Err: executeLoadClientConfig")
+		}
+
+	} else {
+		health.CheckIn(health.HealthRecord{
+			Name:            "client-config",
+			Healthy:         true,
+			UnhealthyReason: "",
+		})
+	}
+	fmt.Println("CRON Complete ... LoadClientConfig")
+}
+func serveArtificer() {
 	serveHealthCheck()
+	var err error
+
 	keyVaultDone := make(chan bool, 1)
 	clientConfigDone := make(chan bool, 1)
-	go func() {
-		fmt.Println("Startup Enter ... DoKeyvaultBackground")
-		err := keyvault.DoKeyvaultBackground()
-		if err != nil {
-			health.CheckIn(health.HealthRecord{
-				Name:            "keyvault-api",
-				Healthy:         false,
-				UnhealthyReason: err.Error(),
-			})
-		} else {
-			health.CheckIn(health.HealthRecord{
-				Name:            "keyvault-api",
-				Healthy:         true,
-				UnhealthyReason: "",
-			})
-		}
-		fmt.Println("Startup Complete ... DoKeyvaultBackground")
-		keyVaultDone <- true
-	}()
-	go func() {
-		var (
-			ctx    context.Context
-			cancel context.CancelFunc
-		)
-		ctx, cancel = context.WithCancel(context.Background())
-		defer cancel() // Cancel ctx as soon as handleSearch returns.
-
-		fmt.Println("Startup Enter ... LoadClientConfig")
-		err := loaders.LoadClientConfig(ctx)
-		if err != nil {
-			health.CheckIn(health.HealthRecord{
-				Name:            "client-config",
-				Healthy:         false,
-				UnhealthyReason: err.Error(),
-			})
-		} else {
-			health.CheckIn(health.HealthRecord{
-				Name:            "client-config",
-				Healthy:         true,
-				UnhealthyReason: "",
-			})
-		}
-
-		fmt.Println("Startup Complete ... LoadClientConfig")
-		clientConfigDone <- true
-	}()
 
 	c := cron.New()
 	cronSpec := viper.GetString("keyVault.cronSpec") // i.e. "@every 10s"
-	_, err = c.AddFunc(cronSpec, func() {
-		fmt.Println("CRON Enter ... DoKeyvaultBackground")
-		err := keyvault.DoKeyvaultBackground()
-		if err != nil {
-			health.CheckIn(health.HealthRecord{
-				Name:            "keyvault-api",
-				Healthy:         false,
-				UnhealthyReason: err.Error(),
-			})
-		} else {
-			health.CheckIn(health.HealthRecord{
-				Name:            "keyvault-api",
-				Healthy:         true,
-				UnhealthyReason: "",
-			})
-		}
-		fmt.Println("CRON Complete ... DoKeyvaultBackground")
-	})
+	_, err = cronex.AddFunc(c, true, keyVaultDone, cronSpec, executeKeyVaultFetch)
 	if err != nil {
 		panic(err.Error())
 	}
 	cronSpec = viper.GetString("clientConfig.cronSpec") // i.e. "@every 5min"
 
-	_, err = c.AddFunc(cronSpec, func() {
-		var (
-			ctx    context.Context
-			cancel context.CancelFunc
-		)
-		ctx, cancel = context.WithCancel(context.Background())
-		defer cancel() // Cancel ctx as soon as handleSearch returns.
-
-		fmt.Println("CRON Enter ... LoadClientConfig")
-		err := loaders.LoadClientConfig(ctx)
-		if err != nil {
-			health.CheckIn(health.HealthRecord{
-				Name:            "client-config",
-				Healthy:         false,
-				UnhealthyReason: err.Error(),
-			})
-		} else {
-			health.CheckIn(health.HealthRecord{
-				Name:            "client-config",
-				Healthy:         true,
-				UnhealthyReason: "",
-			})
-		}
-		fmt.Println("CRON Complete ... LoadClientConfig")
-	})
+	_, err = cronex.AddFunc(c, true, clientConfigDone, cronSpec, executeLoadClientConfig)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -240,6 +234,20 @@ func serveArtificer() {
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%v", serverConfig.Port)))
 }
 
+type KeyVaultConfig struct {
+	ClientId                 string
+	KeyVaultUrl              string
+	KeyIdentifier            string
+	CronSpec                 string
+	AllowedUnhealthyDuration int
+}
+type ClientConfig struct {
+	UseKeyVault              bool
+	KeyVaultSecretName       string
+	CronSpec                 string
+	AllowedUnhealthyDuration int
+}
+
 type DNSResolverRecord struct {
 	Name string
 	DNS  string
@@ -275,9 +283,22 @@ var serveCmd = &cobra.Command{
 		config.SetClientSecret(serverConfig.KeyVaultClientSecret)
 
 		err = viper.UnmarshalKey("healthCheck", &healthCheckRecord)
+		if err != nil {
+			panic(err)
+		}
 		for _, e := range healthCheckRecord.DnsResolver {
 			fmt.Printf("%s:%s", e.Name, e.DNS)
 		}
+
+		err = viper.UnmarshalKey("keyVault", &keyVaultConfig)
+		if err != nil {
+			panic(err)
+		}
+		err = viper.UnmarshalKey("clientConfig", &clientConfig)
+		if err != nil {
+			panic(err)
+		}
+
 		serveArtificer()
 	},
 }

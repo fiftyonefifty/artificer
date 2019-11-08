@@ -3,6 +3,7 @@ package health
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/heptiolabs/healthcheck"
 )
@@ -11,6 +12,7 @@ type HealthRecord struct {
 	Name            string
 	Healthy         bool
 	UnhealthyReason string
+	LastHealthyTime time.Time
 }
 
 var (
@@ -19,6 +21,9 @@ var (
 
 func CheckIn(record HealthRecord) {
 	// Store an item in the map.
+	if record.Healthy {
+		record.LastHealthyTime = time.Now().UTC()
+	}
 	repo.Store(record.Name, record)
 }
 

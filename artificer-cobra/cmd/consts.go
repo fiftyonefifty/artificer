@@ -1,6 +1,12 @@
 package cmd
 
 const (
+	splashHealthCheck = ` 
+                
+ |_|  _   _. | _|_ |_  /  |_   _   _ |  
+ | | (/_ (_| |  |_ | | \_ | | (/_ (_ |< github.com/heptiolabs/healthcheck
+    
+`
 	splash = `
     ___       __  _ ____            
    / _ | ____/ /_(_) _(_)______ ____
