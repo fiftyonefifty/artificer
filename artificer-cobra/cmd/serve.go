@@ -43,6 +43,7 @@ import (
 	middleware "github.com/labstack/echo/v4/middleware"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
+	"gopkg.in/dealancer/validate.v2"
 )
 
 var (
@@ -344,8 +345,9 @@ func init() {
 		cliFlags *cliFlags
 	)
 	sc := ServerConfig{}
+	scup := ServerConfigUsingPath{}
 
-	cliFlags = sc.CliFlags_ConfigPath()
+	cliFlags = scup.CliFlags_ConfigPath()
 	addFlag(serveCmd, cliFlags)
 
 	cliFlags = sc.CliFlags_KeyVaultClientId()
@@ -426,21 +428,25 @@ func validateVehicleRequest(cmd *cobra.Command) (sc *ServerConfig, err error) {
 
 		val, err = cmd.Flags().GetString("port")
 		if err != nil || len(val) == 0 {
-			panic("port is not optional")
+			sc.Port = ""
 		}
 		sc.Port = val
 
 		val, err = cmd.Flags().GetString("healthcheck-port")
 		if err != nil || len(val) == 0 {
-			panic("healthcheck-port is not optional")
+			sc.HealthCheckPort = ""
 		}
 		sc.HealthCheckPort = val
+		if err = validate.Validate(&sc); err != nil {
+			return
+		}
 	}
 	return
 }
 
 var (
 	_ServerConfigType                reflect.Type
+	_ServerConfigUsingPathType       reflect.Type
 	_KeyVaultClientIdStructField     reflect.StructField
 	_KeyVaultClientSecretStructField reflect.StructField
 	_AzureGroupNameStructField       reflect.StructField
@@ -452,14 +458,16 @@ var (
 )
 
 type ServerConfig struct {
-	ConfigPath           string `cli-required:"false" cli-long:"config-path" cli-short:"" cli-default:"" cli-description:"path to json config. Good for docker-compose, k8s, i.e. secret/settings.json" validate:"gt=1  & format=alnum_unicode"`
-	KeyVaultClientId     string `cli-required:"false" cli-long:"key-vault-client-id" cli-short:"" cli-default:"" cli-description:"Azure KeyVault Client Id" validate:"gt=1  & format=alnum_unicode"`
-	KeyVaultClientSecret string `cli-required:"false" cli-long:"key-vault-client-secret" cli-short:"" cli-default:"" cli-description:"Azure KeyVault Client Secret" validate:"gt=1  & format=alnum_unicode"`
-	AzureGroupName       string `cli-required:"false" cli-long:"az-group-name" cli-short:"" cli-default:"" cli-description:"Azure Group Name" validate:"gt=1  & format=alnum_unicode"`
-	AzureSubscriptionId  string `cli-required:"false" cli-long:"az-subscription-id" cli-short:"" cli-default:"" cli-description:"Azure Subscription Id" validate:"gt=1  & format=alnum_unicode"`
-	AzureTenantId        string `cli-required:"false" cli-long:"az-tenant-id" cli-short:"" cli-default:"" cli-description:"Azure Tenant Id" validate:"gt=1  & format=alnum_unicode"`
-	Port                 string `cli-required:"false" cli-long:"port" cli-short:"p" cli-default:"" cli-description:"Artifice Server Port" validate:"gt=1  & format=alnum_unicode"`
-	HealthCheckPort      string `cli-required:"false" cli-long:"healthcheck-port" cli-short:"" cli-default:"" cli-description:"Artifice Server Port" validate:"gt=1  & format=alnum_unicode"`
+	KeyVaultClientId     string `cli-required:"false" cli-long:"key-vault-client-id" cli-short:"" cli-default:"" cli-description:"Azure KeyVault Client Id" validate:"gt=0 & format=alnum_unicode"`
+	KeyVaultClientSecret string `cli-required:"false" cli-long:"key-vault-client-secret" cli-short:"" cli-default:"" cli-description:"Azure KeyVault Client Secret" validate:"gt=0 & format=alnum_unicode"`
+	AzureGroupName       string `cli-required:"false" cli-long:"az-group-name" cli-short:"" cli-default:"" cli-description:"Azure Group Name" validate:"gt=0 & format=alnum_unicode"`
+	AzureSubscriptionId  string `cli-required:"false" cli-long:"az-subscription-id" cli-short:"" cli-default:"" cli-description:"Azure Subscription Id" validate:"gt=0 & format=alnum_unicode"`
+	AzureTenantId        string `cli-required:"false" cli-long:"az-tenant-id" cli-short:"" cli-default:"" cli-description:"Azure Tenant Id" validate:"gt=0 & format=alnum_unicode"`
+	Port                 string `cli-required:"false" cli-long:"port" cli-short:"p" cli-default:"" cli-description:"Artifice Server Port" validate:"gt=0 & format=alnum_unicode"`
+	HealthCheckPort      string `cli-required:"false" cli-long:"healthcheck-port" cli-short:"" cli-default:"" cli-description:"Artifice Server Port" validate:"gt=0 & format=alnum_unicode"`
+}
+type ServerConfigUsingPath struct {
+	ConfigPath string `cli-required:"false" cli-long:"config-path" cli-short:"" cli-default:"" cli-description:"path to json config. Good for docker-compose, k8s, i.e. secret/settings.json" validate:"gt=0 & format=alnum_unicode"`
 }
 
 func buildServerConfigReflectionData() {
@@ -472,10 +480,14 @@ func buildServerConfigReflectionData() {
 		_AzureTenantIdStructField, _ = _ServerConfigType.FieldByName("AzureTenantId")
 		_PortStructField, _ = _ServerConfigType.FieldByName("Port")
 		_HealthCheckPortStructField, _ = _ServerConfigType.FieldByName("HealthCheckPort")
-		_ConfigPathStructField, _ = _ServerConfigType.FieldByName("ConfigPath")
 	}
+	if _ServerConfigUsingPathType == nil {
+		_ServerConfigUsingPathType = reflect.TypeOf(ServerConfigUsingPath{})
+		_ConfigPathStructField, _ = _ServerConfigUsingPathType.FieldByName("ConfigPath")
+	}
+
 }
-func (m *ServerConfig) CliFlags_ConfigPath() *cliFlags {
+func (m *ServerConfigUsingPath) CliFlags_ConfigPath() *cliFlags {
 	return m.getWellknownCliFlags(&_ConfigPathStructField)
 }
 func (m *ServerConfig) CliFlags_KeyVaultClientId() *cliFlags {
@@ -499,7 +511,14 @@ func (m *ServerConfig) CliFlags_Port() *cliFlags {
 func (m *ServerConfig) CliFlags_HealthCheckPort() *cliFlags {
 	return m.getWellknownCliFlags(&_HealthCheckPortStructField)
 }
+
+func (m *ServerConfigUsingPath) getWellknownCliFlags(sf *reflect.StructField) *cliFlags {
+	return getWellknownCliFlags(sf)
+}
 func (m *ServerConfig) getWellknownCliFlags(sf *reflect.StructField) *cliFlags {
+	return getWellknownCliFlags(sf)
+}
+func getWellknownCliFlags(sf *reflect.StructField) *cliFlags {
 	buildServerConfigReflectionData()
 	cliLong, _ := sf.Tag.Lookup("cli-long")
 	cliShort, _ := sf.Tag.Lookup("cli-short")

@@ -38,6 +38,7 @@ require (
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/echo/v4 v4.1.11
+	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/mattn/go-colorable v0.1.4 // indirect
@@ -83,5 +84,6 @@ require (
 	google.golang.org/grpc v1.24.0 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/dealancer/validate.v2 v2.1.0
 	gopkg.in/square/go-jose.v2 v2.3.1
 )
