@@ -18,9 +18,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	azKeyvault "github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	"github.com/Azure/go-autorest/autorest/to"
+	gocache "github.com/ghstahl/go-syncmap-cache"
 	echo "github.com/labstack/echo/v4"
 	"github.com/pascaldekloe/jwt"
-	gocache "github.com/ghstahl/go-syncmap-cache"
 	"github.com/spf13/viper"
 )
 
@@ -36,14 +36,65 @@ type TokenBuildRequest struct {
 	AccessTokenLifetime int
 	Claims              jwt.Claims
 }
+type KeySignParameters struct {
+	// Algorithm - The signing/verification algorithm identifier. For more information on possible algorithm types, see JsonWebKeySignatureAlgorithm. Possible values include: 'PS256', 'PS384', 'PS512', 'RS256', 'RS384', 'RS512', 'RSNULL', 'ES256', 'ES384', 'ES512', 'ES256K'
+	Algorithm string `json:"alg,omitempty"`
+	// Value - a URL-encoded base64 string
+	Value *string `json:"value,omitempty"`
+}
+type KeyOperationResult struct {
+	// Kid - READ-ONLY; Key identifier
+	Kid *string `json:"kid,omitempty"`
+	// Result - READ-ONLY; a URL-encoded base64 string
+	Result *string `json:"value,omitempty"`
+}
+type Signer interface {
+	Sign(ctx context.Context, ksp KeySignParameters) (result KeyOperationResult, err error)
+}
+type AzureKeyVaultSigner struct {
+	BaseClient   azKeyvault.BaseClient
+	VaultBaseURL string
+	KeyName      string
+}
+
+func (signer AzureKeyVaultSigner) Sign(ctx context.Context, ksp KeySignParameters) (result KeyOperationResult, err error) {
+	var azAlg azKeyvault.JSONWebKeySignatureAlgorithm = azKeyvault.JSONWebKeySignatureAlgorithm(ksp.Algorithm)
+
+	cachedItem, err := GetCachedKeyVersions()
+	if err != nil {
+		return
+	}
+	keyOperationResult, err := signer.BaseClient.Sign(ctx, signer.VaultBaseURL, signer.KeyName, cachedItem.CurrentVersionId,
+		azKeyvault.KeySignParameters{
+			Algorithm: azAlg,
+			Value:     ksp.Value,
+		})
+	if err != nil {
+		return
+	}
+	result = KeyOperationResult{
+		Kid:    keyOperationResult.Kid,
+		Result: keyOperationResult.Result,
+	}
+	return
+}
 
 type BaseClient2 struct {
 	azKeyvault.BaseClient
+	Signer Signer
 }
 
-func newBaseClient2(base azKeyvault.BaseClient) BaseClient2 {
+func newAzureKeyVaultBaseClient2(base azKeyvault.BaseClient) BaseClient2 {
+	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl") //"https://P7KeyValut.vault.azure.net/"
+	keyName := viper.GetString("keyVault.KeyIdentifier")   //"P7IdentityServer4SelfSigned"
+
 	return BaseClient2{
 		BaseClient: base,
+		Signer: AzureKeyVaultSigner{
+			BaseClient:   base,
+			VaultBaseURL: keyVaultUrl,
+			KeyName:      keyName,
+		},
 	}
 }
 
@@ -149,8 +200,14 @@ func (keyClient *BaseClient2) Sign2(
 	}
 	sEnc := util.ByteArraySha256Encode64(tokenWithoutSignature)
 
-	keyOperationResult, err := keyClient.Sign(ctx, vaultBaseURL, keyName, keyVersion, azKeyvault.KeySignParameters{
-		Algorithm: alg,
+	/*
+		keyOperationResult, err := keyClient.Sign(ctx, vaultBaseURL, keyName, keyVersion, azKeyvault.KeySignParameters{
+			Algorithm: alg,
+			Value:     &sEnc,
+		})
+	*/
+	keyOperationResult, err := keyClient.Signer.Sign(ctx, KeySignParameters{
+		Algorithm: string(alg),
 		Value:     &sEnc,
 	})
 	if err != nil {
@@ -163,23 +220,7 @@ func (keyClient *BaseClient2) Sign2(
 }
 
 func (keyClient *BaseClient2) GetActiveKeysVersion2(ctx context.Context, keyVaultUrl string, keyIdentifier string) (finalResult []azKeyvault.KeyBundle, currentKeyBundle azKeyvault.KeyBundle, err error) {
-	keyId := "123"
-	claims := jwt.Claims{
-		Registered: jwt.Registered{
-			Subject:   "kkazanova",
-			Audiences: []string{"KGB", "RU"},
-		},
-		Set: map[string]interface{}{
-			"iss": nil,
-			"sub": "karcher",
-			"aud": "ISIS",
-		},
-		KeyID: keyId,
-	}
 
-	token, _ := keyClient.Sign2(ctx, &claims, azKeyvault.RS256, keyVaultUrl, keyIdentifier, keyId)
-	sToken := string(token)
-	fmt.Println(sToken)
 	// Length requirements defined by 2.2.2.9.1 RSA Private Key BLOB (https://msdn.microsoft.com/en-us/library/cc250013.aspx).
 	/*
 		PubExp (4 bytes): Length MUST be 4 bytes.
@@ -253,7 +294,7 @@ func (keyClient *BaseClient2) GetActiveKeysVersion2(ctx context.Context, keyVaul
 func GetKeyClient() (keyClient BaseClient2, err error) {
 
 	baseClient := getKeysClient()
-	keyClient = newBaseClient2(baseClient)
+	keyClient = newAzureKeyVaultBaseClient2(baseClient)
 	err = nil
 	return
 }
