@@ -21,7 +21,7 @@
            "mode": "auto",
            "program": "${workspaceFolder}/artificer-cobra/main.go",
            "env": {},
-           "args": ["serve"]
+           "args": ["serve","--config-path","foo"]
        },
        {
           "name": "Launch Cobra Artificer 2",

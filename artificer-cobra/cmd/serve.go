@@ -262,9 +262,13 @@ var serveCmd = &cobra.Command{
 	Short: "serves artificer oauth2 server",
 	Long: `serves artificer oauth2 server.
 	Order of config;
-	1. config path
-	2. args override
-	3. environment overrides
+	
+	--config-path <path to json>
+		WINS
+	
+	Alternative config
+		1. cli args w/
+		2. environment overrides
 	
 	example Config Json
 	{
@@ -293,6 +297,7 @@ var serveCmd = &cobra.Command{
 		serverConfig, err = validateVehicleRequest(cmd)
 		if err != nil {
 			fmt.Println(err.Error())
+			cmd.Help()
 			return
 		}
 		config.SetGroupName(serverConfig.AzureGroupName)
@@ -373,12 +378,12 @@ func validateVehicleRequest(cmd *cobra.Command) (sc *ServerConfig, err error) {
 	sc = &ServerConfig{}
 
 	val, err = cmd.Flags().GetString("config-path")
-	if err == nil {
+	if err == nil && len(val) > 0 {
 		var viperConfigPath = viper.New()
 		viperConfigPath.SetConfigFile(val)
 		err = viperConfigPath.ReadInConfig()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		sc.KeyVaultClientId = viperConfigPath.GetString("serveConfig.keyVaultClientId")
 		sc.KeyVaultClientSecret = viperConfigPath.GetString("serveConfig.keyVaultClientSecret")
