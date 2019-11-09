@@ -30,9 +30,17 @@
           "mode": "auto",
           "program": "${workspaceFolder}/artificer-cobra/main.go",
           "env": {},
-          "args": ["serve","--healthcheck-port","9998","--port","9000","--az-group-name","cct-test-resource","--az-subscription-id","39ac48fb-fea0-486a-ba84-e0ae9b06c663","--az-tenant-id","3b217a9b-6c58-428b-b022-5ad741ce2016","--key-vault-client-id","ddecd689-3d6c-4311-b354-45ab6fa7e48c","--key-vault-client-secret","<secre>"]
+          "args": ["serve","--healthcheck-port","9998","--port","9000","--az-group-name","cct-test-resource","--az-subscription-id","39ac48fb-fea0-486a-ba84-e0ae9b06c663","--az-tenant-id","3b217a9b-6c58-428b-b022-5ad741ce2016","--key-vault-client-id","ddecd689-3d6c-4311-b354-45ab6fa7e48c","--key-vault-client-secret","<secret>"]
       },
-
+      {
+        "name": "Launch Cobra Artificer ConfigPath",
+        "type": "go",
+        "request": "launch",
+        "mode": "auto",
+        "program": "${workspaceFolder}/artificer-cobra/main.go",
+        "env": {},
+        "args": ["serve","--config-path","example/serve.json" ]
+    },
         
     ]
 }

@@ -261,6 +261,25 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "serves artificer oauth2 server",
 	Long: `serves artificer oauth2 server.
+	Order of config;
+	1. config path
+	2. args override
+	3. environment overrides
+	
+	example Config Json
+	{
+		"serveConfig":{
+			"port":"9000",
+			"healthCheckPort":"9998",
+			"keyVaultClientId": "ddecd689-3d6c-4311-b354-45ab6fa7e48c",
+			"keyVaultClientSecret":"<<secret>>",
+			"azureGroupName":"my-resource",
+			"azureTenantId":"3b257a9b-7c58-428b-c022-5ad741ce2016",
+			"azureSubscriptionId":"59ac48fb-dea0-484a-ca84-e0be9b06c663"
+		} 
+	
+	}
+
 	Environment Variables Win:
 		AF-key-vault-client-id
 		AF-key-vault-client-secret
@@ -321,6 +340,9 @@ func init() {
 	)
 	sc := ServerConfig{}
 
+	cliFlags = sc.CliFlags_ConfigPath()
+	addFlag(serveCmd, cliFlags)
+
 	cliFlags = sc.CliFlags_KeyVaultClientId()
 	addFlag(serveCmd, cliFlags)
 
@@ -350,48 +372,65 @@ func validateVehicleRequest(cmd *cobra.Command) (sc *ServerConfig, err error) {
 	)
 	sc = &ServerConfig{}
 
-	val, err = cmd.Flags().GetString("key-vault-client-id")
-	if err != nil || len(val) == 0 {
-		val = viper.GetString("AF-key-vault-client-id")
-	}
-	sc.KeyVaultClientId = val
+	val, err = cmd.Flags().GetString("config-path")
+	if err == nil {
+		var viperConfigPath = viper.New()
+		viperConfigPath.SetConfigFile(val)
+		err = viperConfigPath.ReadInConfig()
+		if err != nil {
+			panic(err)
+		}
+		sc.KeyVaultClientId = viperConfigPath.GetString("serveConfig.keyVaultClientId")
+		sc.KeyVaultClientSecret = viperConfigPath.GetString("serveConfig.keyVaultClientSecret")
+		sc.AzureGroupName = viperConfigPath.GetString("serveConfig.azureGroupName")
+		sc.AzureSubscriptionId = viperConfigPath.GetString("serveConfig.azureSubscriptionId")
+		sc.AzureTenantId = viperConfigPath.GetString("serveConfig.azureTenantId")
+		sc.Port = viperConfigPath.GetString("serveConfig.port")
+		sc.HealthCheckPort = viperConfigPath.GetString("serveConfig.healthCheckPort")
+	} else {
 
-	val, err = cmd.Flags().GetString("key-vault-client-secret")
-	if err != nil || len(val) == 0 {
-		val = viper.GetString("AF-key-vault-client-secret")
-	}
-	sc.KeyVaultClientSecret = val
+		val, err = cmd.Flags().GetString("key-vault-client-id")
+		if err != nil || len(val) == 0 {
+			val = viper.GetString("AF-key-vault-client-id")
+		}
+		sc.KeyVaultClientId = val
 
-	val, err = cmd.Flags().GetString("az-group-name")
-	if err != nil || len(val) == 0 {
-		val = viper.GetString("AF-az-group-name")
-	}
-	sc.AzureGroupName = val
+		val, err = cmd.Flags().GetString("key-vault-client-secret")
+		if err != nil || len(val) == 0 {
+			val = viper.GetString("AF-key-vault-client-secret")
+		}
+		sc.KeyVaultClientSecret = val
 
-	val, err = cmd.Flags().GetString("az-subscription-id")
-	if err != nil || len(val) == 0 {
-		val = viper.GetString("AF-az-subscription-id")
-	}
-	sc.AzureSubscriptionId = val
+		val, err = cmd.Flags().GetString("az-group-name")
+		if err != nil || len(val) == 0 {
+			val = viper.GetString("AF-az-group-name")
+		}
+		sc.AzureGroupName = val
 
-	val, err = cmd.Flags().GetString("az-tenant-id")
-	if err != nil || len(val) == 0 {
-		val = viper.GetString("AF-az-tenant-id")
-	}
-	sc.AzureTenantId = val
+		val, err = cmd.Flags().GetString("az-subscription-id")
+		if err != nil || len(val) == 0 {
+			val = viper.GetString("AF-az-subscription-id")
+		}
+		sc.AzureSubscriptionId = val
 
-	val, err = cmd.Flags().GetString("port")
-	if err != nil || len(val) == 0 {
-		panic("port is not optional")
-	}
-	sc.Port = val
+		val, err = cmd.Flags().GetString("az-tenant-id")
+		if err != nil || len(val) == 0 {
+			val = viper.GetString("AF-az-tenant-id")
+		}
+		sc.AzureTenantId = val
 
-	val, err = cmd.Flags().GetString("healthcheck-port")
-	if err != nil || len(val) == 0 {
-		panic("healthcheck-port is not optional")
-	}
-	sc.HealthCheckPort = val
+		val, err = cmd.Flags().GetString("port")
+		if err != nil || len(val) == 0 {
+			panic("port is not optional")
+		}
+		sc.Port = val
 
+		val, err = cmd.Flags().GetString("healthcheck-port")
+		if err != nil || len(val) == 0 {
+			panic("healthcheck-port is not optional")
+		}
+		sc.HealthCheckPort = val
+	}
 	return
 }
 
@@ -404,14 +443,16 @@ var (
 	_AzureTenantIdStructField        reflect.StructField
 	_PortStructField                 reflect.StructField
 	_HealthCheckPortStructField      reflect.StructField
+	_ConfigPathStructField           reflect.StructField
 )
 
 type ServerConfig struct {
-	KeyVaultClientId     string `cli-required:"true" cli-long:"key-vault-client-id" cli-short:"" cli-default:"" cli-description:"Azure KeyVault Client Id" validate:"gt=1  & format=alnum_unicode"`
-	KeyVaultClientSecret string `cli-required:"true" cli-long:"key-vault-client-secret" cli-short:"" cli-default:"" cli-description:"Azure KeyVault Client Secret" validate:"gt=1  & format=alnum_unicode"`
-	AzureGroupName       string `cli-required:"true" cli-long:"az-group-name" cli-short:"" cli-default:"" cli-description:"Azure Group Name" validate:"gt=1  & format=alnum_unicode"`
-	AzureSubscriptionId  string `cli-required:"true" cli-long:"az-subscription-id" cli-short:"" cli-default:"" cli-description:"Azure Subscription Id" validate:"gt=1  & format=alnum_unicode"`
-	AzureTenantId        string `cli-required:"true" cli-long:"az-tenant-id" cli-short:"" cli-default:"" cli-description:"Azure Tenant Id" validate:"gt=1  & format=alnum_unicode"`
+	ConfigPath           string `cli-required:"false" cli-long:"config-path" cli-short:"" cli-default:"" cli-description:"path to json config. Good for docker-compose, k8s, i.e. secret/settings.json" validate:"gt=1  & format=alnum_unicode"`
+	KeyVaultClientId     string `cli-required:"false" cli-long:"key-vault-client-id" cli-short:"" cli-default:"" cli-description:"Azure KeyVault Client Id" validate:"gt=1  & format=alnum_unicode"`
+	KeyVaultClientSecret string `cli-required:"false" cli-long:"key-vault-client-secret" cli-short:"" cli-default:"" cli-description:"Azure KeyVault Client Secret" validate:"gt=1  & format=alnum_unicode"`
+	AzureGroupName       string `cli-required:"false" cli-long:"az-group-name" cli-short:"" cli-default:"" cli-description:"Azure Group Name" validate:"gt=1  & format=alnum_unicode"`
+	AzureSubscriptionId  string `cli-required:"false" cli-long:"az-subscription-id" cli-short:"" cli-default:"" cli-description:"Azure Subscription Id" validate:"gt=1  & format=alnum_unicode"`
+	AzureTenantId        string `cli-required:"false" cli-long:"az-tenant-id" cli-short:"" cli-default:"" cli-description:"Azure Tenant Id" validate:"gt=1  & format=alnum_unicode"`
 	Port                 string `cli-required:"false" cli-long:"port" cli-short:"p" cli-default:"" cli-description:"Artifice Server Port" validate:"gt=1  & format=alnum_unicode"`
 	HealthCheckPort      string `cli-required:"false" cli-long:"healthcheck-port" cli-short:"" cli-default:"" cli-description:"Artifice Server Port" validate:"gt=1  & format=alnum_unicode"`
 }
@@ -426,7 +467,11 @@ func buildServerConfigReflectionData() {
 		_AzureTenantIdStructField, _ = _ServerConfigType.FieldByName("AzureTenantId")
 		_PortStructField, _ = _ServerConfigType.FieldByName("Port")
 		_HealthCheckPortStructField, _ = _ServerConfigType.FieldByName("HealthCheckPort")
+		_ConfigPathStructField, _ = _ServerConfigType.FieldByName("ConfigPath")
 	}
+}
+func (m *ServerConfig) CliFlags_ConfigPath() *cliFlags {
+	return m.getWellknownCliFlags(&_ConfigPathStructField)
 }
 func (m *ServerConfig) CliFlags_KeyVaultClientId() *cliFlags {
 	return m.getWellknownCliFlags(&_KeyVaultClientIdStructField)
