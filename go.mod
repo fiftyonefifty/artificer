@@ -39,6 +39,7 @@ require (
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/echo/v4 v4.1.11
 	github.com/leodido/go-urn v1.2.0 // indirect
+	github.com/lestrrat-go/jwx v0.9.0
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/mattn/go-colorable v0.1.4 // indirect
