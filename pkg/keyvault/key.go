@@ -4,6 +4,7 @@ import (
 	"artificer/pkg/api/renderings"
 	"artificer/pkg/config"
 	"artificer/pkg/iam"
+	keymanagment "artificer/pkg/key-management"
 	"artificer/pkg/util"
 	"context"
 	b64 "encoding/base64"
@@ -36,28 +37,14 @@ type TokenBuildRequest struct {
 	AccessTokenLifetime int
 	Claims              jwt.Claims
 }
-type KeySignParameters struct {
-	// Algorithm - The signing/verification algorithm identifier. For more information on possible algorithm types, see JsonWebKeySignatureAlgorithm. Possible values include: 'PS256', 'PS384', 'PS512', 'RS256', 'RS384', 'RS512', 'RSNULL', 'ES256', 'ES384', 'ES512', 'ES256K'
-	Algorithm string `json:"alg,omitempty"`
-	// Value - a URL-encoded base64 string
-	Value *string `json:"value,omitempty"`
-}
-type KeyOperationResult struct {
-	// Kid - READ-ONLY; Key identifier
-	Kid *string `json:"kid,omitempty"`
-	// Result - READ-ONLY; a URL-encoded base64 string
-	Result *string `json:"value,omitempty"`
-}
-type Signer interface {
-	Sign(ctx context.Context, ksp KeySignParameters) (result KeyOperationResult, err error)
-}
+
 type AzureKeyVaultSigner struct {
 	BaseClient   azKeyvault.BaseClient
 	VaultBaseURL string
 	KeyName      string
 }
 
-func (signer AzureKeyVaultSigner) Sign(ctx context.Context, ksp KeySignParameters) (result KeyOperationResult, err error) {
+func (signer AzureKeyVaultSigner) Sign(ctx context.Context, ksp keymanagment.KeySignParameters) (result keymanagment.KeyOperationResult, err error) {
 	var azAlg azKeyvault.JSONWebKeySignatureAlgorithm = azKeyvault.JSONWebKeySignatureAlgorithm(ksp.Algorithm)
 
 	cachedItem, err := GetCachedKeyVersions()
@@ -72,7 +59,7 @@ func (signer AzureKeyVaultSigner) Sign(ctx context.Context, ksp KeySignParameter
 	if err != nil {
 		return
 	}
-	result = KeyOperationResult{
+	result = keymanagment.KeyOperationResult{
 		Kid:    keyOperationResult.Kid,
 		Result: keyOperationResult.Result,
 	}
@@ -81,7 +68,7 @@ func (signer AzureKeyVaultSigner) Sign(ctx context.Context, ksp KeySignParameter
 
 type BaseClient2 struct {
 	azKeyvault.BaseClient
-	Signer Signer
+	Signer keymanagment.Signer
 }
 
 func newAzureKeyVaultBaseClient2(base azKeyvault.BaseClient) BaseClient2 {
@@ -206,7 +193,7 @@ func (keyClient *BaseClient2) Sign2(
 			Value:     &sEnc,
 		})
 	*/
-	keyOperationResult, err := keyClient.Signer.Sign(ctx, KeySignParameters{
+	keyOperationResult, err := keyClient.Signer.Sign(ctx, keymanagment.KeySignParameters{
 		Algorithm: string(alg),
 		Value:     &sEnc,
 	})
