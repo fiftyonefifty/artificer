@@ -9,11 +9,8 @@ import (
 	"github.com/lestrrat-go/jwx/jwk"
 )
 
-func TestA(t *testing.T) {
-	pemPrivate, pemPublic, err := PemGenerateECSDAP256()
-	if err != nil {
-		t.Fail()
-	}
+func validatePem(t *testing.T, pemPrivate string, pemPublic string) {
+
 	fmt.Println(pemPrivate)
 	fmt.Println(pemPublic)
 
@@ -30,4 +27,32 @@ func TestA(t *testing.T) {
 		return
 	}
 	fmt.Println(string(jsonbuf))
+}
+func Test_PemGenerateECSDAP224(t *testing.T) {
+	pemPrivate, pemPublic, err := PemGenerateECSDAP224()
+	if err != nil {
+		t.Fail()
+	}
+	validatePem(t, pemPrivate, pemPublic)
+}
+func Test_PemGenerateECSDAP256(t *testing.T) {
+	pemPrivate, pemPublic, err := PemGenerateECSDAP256()
+	if err != nil {
+		t.Fail()
+	}
+	validatePem(t, pemPrivate, pemPublic)
+}
+func Test_PemGenerateECSDAP384(t *testing.T) {
+	pemPrivate, pemPublic, err := PemGenerateECSDAP384()
+	if err != nil {
+		t.Fail()
+	}
+	validatePem(t, pemPrivate, pemPublic)
+}
+func Test_PemGenerateECSDAP521(t *testing.T) {
+	pemPrivate, pemPublic, err := PemGenerateECSDAP521()
+	if err != nil {
+		t.Fail()
+	}
+	validatePem(t, pemPrivate, pemPublic)
 }

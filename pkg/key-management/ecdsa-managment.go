@@ -40,10 +40,8 @@ func DecodeECDSAPrivate(pemEncoded string) *ecdsa.PrivateKey {
 	privateKey, _ := x509.ParseECPrivateKey(x509Encoded)
 	return privateKey
 }
+func PemGenerateECSDA(pubkeyCurve elliptic.Curve) (pemPrivate string, pemPublic string, err error) {
 
-func PemGenerateECSDAP256() (pemPrivate string, pemPublic string, err error) {
-
-	pubkeyCurve := elliptic.P256()                                 //see http://golang.org/pkg/crypto/elliptic/#P256
 	privateKey, err := ecdsa.GenerateKey(pubkeyCurve, rand.Reader) // this generates a public & private key pair
 	if err != nil {
 		return
@@ -71,15 +69,18 @@ func PemGenerateECSDAP256() (pemPrivate string, pemPublic string, err error) {
 	pemPublic = pemEncodedPub
 	return
 }
-func mustParseECKey(s string) *ecdsa.PrivateKey {
-	block, _ := pem.Decode([]byte(s))
-	if block == nil {
-		panic("invalid PEM")
-	}
+func PemGenerateECSDAP224() (pemPrivate string, pemPublic string, err error) {
+	return PemGenerateECSDA(elliptic.P224()) //see http://golang.org/pkg/crypto/elliptic/#P224
+}
 
-	key, err := x509.ParseECPrivateKey(block.Bytes)
-	if err != nil {
-		panic(err)
-	}
-	return key
+func PemGenerateECSDAP256() (pemPrivate string, pemPublic string, err error) {
+	return PemGenerateECSDA(elliptic.P256()) //see http://golang.org/pkg/crypto/elliptic/#P256
+}
+
+func PemGenerateECSDAP384() (pemPrivate string, pemPublic string, err error) {
+	return PemGenerateECSDA(elliptic.P384()) //see http://golang.org/pkg/crypto/elliptic/#P384
+}
+
+func PemGenerateECSDAP521() (pemPrivate string, pemPublic string, err error) {
+	return PemGenerateECSDA(elliptic.P521()) //see http://golang.org/pkg/crypto/elliptic/#P521
 }
