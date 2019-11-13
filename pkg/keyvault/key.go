@@ -4,7 +4,8 @@ import (
 	"artificer/pkg/api/renderings"
 	"artificer/pkg/config"
 	"artificer/pkg/iam"
-	keymanagment "artificer/pkg/key-management"
+	jwtMinter "artificer/pkg/jwt-minter"
+	keymanagement "artificer/pkg/key-management"
 	"artificer/pkg/util"
 	"context"
 	b64 "encoding/base64"
@@ -30,45 +31,9 @@ var (
 	cacheKey = "85b75fb0-f120-4bfb-a0fe-f017cc72e41f"
 )
 
-type TokenBuildRequest struct {
-	UtcNotBefore        *time.Time
-	UtcExpires          *time.Time
-	OfflineAccess       bool
-	AccessTokenLifetime int
-	Claims              jwt.Claims
-}
-
-type AzureKeyVaultSigner struct {
-	BaseClient   azKeyvault.BaseClient
-	VaultBaseURL string
-	KeyName      string
-}
-
-func (signer AzureKeyVaultSigner) Sign(ctx context.Context, ksp keymanagment.KeySignParameters) (result keymanagment.KeyOperationResult, err error) {
-	var azAlg azKeyvault.JSONWebKeySignatureAlgorithm = azKeyvault.JSONWebKeySignatureAlgorithm(ksp.Algorithm)
-
-	cachedItem, err := GetCachedKeyVersions()
-	if err != nil {
-		return
-	}
-	keyOperationResult, err := signer.BaseClient.Sign(ctx, signer.VaultBaseURL, signer.KeyName, cachedItem.CurrentVersionId,
-		azKeyvault.KeySignParameters{
-			Algorithm: azAlg,
-			Value:     ksp.Value,
-		})
-	if err != nil {
-		return
-	}
-	result = keymanagment.KeyOperationResult{
-		Kid:    keyOperationResult.Kid,
-		Result: keyOperationResult.Result,
-	}
-	return
-}
-
 type BaseClient2 struct {
 	azKeyvault.BaseClient
-	Signer keymanagment.Signer
+	Signer keymanagement.Signer
 }
 
 func newAzureKeyVaultBaseClient2(base azKeyvault.BaseClient) BaseClient2 {
@@ -101,18 +66,30 @@ func GetSecret(name string) (result keyvault.SecretBundle, err error) {
 	return keyClient.GetSecret(ctx, keyVaultUrl, name, "")
 }
 
-func GetKeysVersion(ctx context.Context) (result azKeyvault.KeyListResultPage, err error) {
+type AzureKeyContext struct {
+	Client        azKeyvault.BaseClient
+	KeyVaultUrl   string
+	KeyIdentifier string
+}
 
-	keyClient := getKeysClient()
+func (azCtx AzureKeyContext) GetKeyVersion(ctx context.Context) (result azKeyvault.KeyListResultPage, err error) {
 	var maxResults int32 = 10
-	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")     //"https://P7KeyValut.vault.azure.net/"
-	keyIdentifier := viper.GetString("keyVault.KeyIdentifier") //"P7IdentityServer4SelfSigned"
+	result, err = azCtx.Client.GetKeyVersions(ctx, azCtx.KeyVaultUrl, azCtx.KeyIdentifier, &maxResults)
+	return
+}
+func GetKeyVersion(ctx context.Context) (result azKeyvault.KeyListResultPage, err error) {
 
-	result, err = keyClient.GetKeyVersions(ctx, keyVaultUrl, keyIdentifier, &maxResults)
+	azCtx := AzureKeyContext{
+		Client:        getKeysClient(),
+		KeyVaultUrl:   viper.GetString("keyVault.KeyVaultUrl"),   //"https://P7KeyValut.vault.azure.net/"
+		KeyIdentifier: viper.GetString("keyVault.KeyIdentifier"), //"P7IdentityServer4SelfSigned"
+	}
+
+	result, err = azCtx.GetKeyVersion(ctx)
 	return
 }
 
-func MintToken(c echo.Context, tokenBuildRequest *TokenBuildRequest) (token string, err error) {
+func MintToken(c echo.Context, tokenBuildRequest *jwtMinter.TokenBuildRequest) (token string, err error) {
 	cachedItem, err := GetCachedKeyVersions()
 	if err != nil {
 		return
@@ -193,7 +170,7 @@ func (keyClient *BaseClient2) Sign2(
 			Value:     &sEnc,
 		})
 	*/
-	keyOperationResult, err := keyClient.Signer.Sign(ctx, keymanagment.KeySignParameters{
+	keyOperationResult, err := keyClient.Signer.Sign(ctx, keymanagement.KeySignParameters{
 		Algorithm: string(alg),
 		Value:     &sEnc,
 	})
@@ -286,19 +263,24 @@ func GetKeyClient() (keyClient BaseClient2, err error) {
 	return
 }
 
-func GetActiveKeysVersion(ctx context.Context) (finalResult []azKeyvault.KeyBundle, currentKeyBundle azKeyvault.KeyBundle, err error) {
+func (azCtx AzureKeyContext) GetActiveKeysVersion(ctx context.Context) (finalResult []azKeyvault.KeyBundle, currentKeyBundle azKeyvault.KeyBundle, err error) {
 
-	keyVaultUrl := viper.GetString("keyVault.KeyVaultUrl")     //"https://P7KeyValut.vault.azure.net/"
-	keyIdentifier := viper.GetString("keyVault.KeyIdentifier") //"P7IdentityServer4SelfSigned"
-	//keyClient := getKeysClient()
-
-	baseClient2, err := GetKeyClient()
+	baseClient, err := GetKeyClient()
 	if err != nil {
 		return
 	}
-	finalResult, currentKeyBundle, err = baseClient2.GetActiveKeysVersion2(ctx, keyVaultUrl, keyIdentifier)
+	finalResult, currentKeyBundle, err = baseClient.GetActiveKeysVersion2(ctx, azCtx.KeyVaultUrl, azCtx.KeyIdentifier)
 
 	return
+}
+
+func GetActiveKeysVersion(ctx context.Context) (finalResult []azKeyvault.KeyBundle, currentKeyBundle azKeyvault.KeyBundle, err error) {
+
+	azCtx := AzureKeyContext{
+		KeyVaultUrl:   viper.GetString("keyVault.KeyVaultUrl"),   //"https://P7KeyValut.vault.azure.net/"
+		KeyIdentifier: viper.GetString("keyVault.KeyIdentifier"), //"P7IdentityServer4SelfSigned"
+	}
+	return azCtx.GetActiveKeysVersion(ctx)
 }
 
 // CreateKeyBundle creates a key in the specified keyvault

@@ -13,11 +13,13 @@ import (
 	"net/http"
 	"time"
 
+	jwtMinter "artificer/pkg/jwt-minter"
+
 	echo "github.com/labstack/echo/v4"
 	"github.com/pascaldekloe/jwt"
 )
 
-func buildArbitraryResourceOwnerClaims(ctx context.Context, req *ArbitraryResourceOwnerRequest) (err error, tokenBuildRequest keyvault.TokenBuildRequest) {
+func buildArbitraryResourceOwnerClaims(ctx context.Context, req *ArbitraryResourceOwnerRequest) (err error, tokenBuildRequest jwtMinter.TokenBuildRequest) {
 
 	if err = validateArbitraryResourceOwnerRequest(req); err != nil {
 		return

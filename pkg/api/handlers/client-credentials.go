@@ -4,6 +4,7 @@ import (
 	"artificer/pkg/appError"
 	"artificer/pkg/client/clientContext"
 	"artificer/pkg/client/models"
+	jwtMinter "artificer/pkg/jwt-minter"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
 	"context"
@@ -83,7 +84,7 @@ func handleClientCredentialsFlow(ctx context.Context, c echo.Context) (err error
 			break
 		}
 	}
-	tokenBuildRequest := keyvault.TokenBuildRequest{
+	tokenBuildRequest := jwtMinter.TokenBuildRequest{
 		Claims:       claims,
 		UtcNotBefore: &utcNotBefore,
 		UtcExpires:   &utcExpires,

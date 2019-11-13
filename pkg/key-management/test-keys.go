@@ -1,4 +1,4 @@
-package keymanagment
+package keymanagement
 
 const privateEcdsaP256 string = `-----BEGIN PRIVATE KEY-----
 MHcCAQEEIDOp7+7/aKFRBZOtKSXtE6sG71ALXqUaE8QcU/HzK1m7oAoGCCqGSM49

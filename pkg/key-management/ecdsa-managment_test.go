@@ -1,4 +1,4 @@
-package keymanagment
+package keymanagement
 
 import (
 	"artificer/pkg/util"

@@ -1,4 +1,4 @@
-package keymanagment
+package keymanagement
 
 import (
 	"context"
@@ -9,9 +9,8 @@ import (
 )
 
 type ECDSASigner struct {
-	Key       *ecdsa.PrivateKey
-	Algorithm string
-	Kid       string
+	Key *ecdsa.PrivateKey
+	Kid string
 }
 
 func (signer ECDSASigner) Sign(ctx context.Context, ksp KeySignParameters) (result KeyOperationResult, err error) {
