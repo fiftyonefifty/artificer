@@ -1,13 +1,73 @@
 package keymanagment
 
 import (
+	"artificer/pkg/util"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/jwk"
+	"github.com/pascaldekloe/jwt"
 )
+
+func TestFormatWithoutSign(t *testing.T) {
+
+	token, err := defaultTestTokenNoSig()
+
+	if err != nil {
+		t.Fatal("sign error:", err)
+	}
+
+	sToken := string(token)
+	fmt.Println(sToken)
+	encodedToken := util.ByteArraySha256Encode64(token)
+	fmt.Println(encodedToken)
+	pemPrivate, pemPublic, err := PemGenerateECSDAP256()
+	pemPrivate = privateEcdsaP256
+	pemPublic = publicEcdsaP256
+
+	priv2, pub2 := DecodeECDSA(pemPrivate, pemPublic)
+
+	paramLen := (priv2.Curve.Params().BitSize + 7) / 8
+
+	h, err := HashByteArray(jwt.ES256, &token)
+
+	r, s, err := ecdsa.Sign(zeroReader, priv2, *h)
+
+	sig := make([]byte, encoding.EncodedLen(paramLen*2))
+	i := len(sig)
+	for _, word := range s.Bits() {
+		for bitCount := strconv.IntSize; bitCount > 0; bitCount -= 8 {
+			i--
+			sig[i] = byte(word)
+			word >>= 8
+		}
+	}
+	// i might have exceeded paramLen due to the word size
+	i = len(sig) - paramLen
+	for _, word := range r.Bits() {
+		for bitCount := strconv.IntSize; bitCount > 0; bitCount -= 8 {
+			i--
+			sig[i] = byte(word)
+			word >>= 8
+		}
+	}
+
+	// encoder won't overhaul source space
+	encoding.Encode(sig, sig[len(sig)-2*paramLen:])
+
+	token = append(token, '.')
+	token = append(token, sig...)
+	sToken = string(token)
+	fmt.Println(sToken)
+
+	got, err := jwt.ECDSACheck(token, pub2)
+	fmt.Println(got.Set["A"])
+	fmt.Println(got)
+}
 
 func validatePem(t *testing.T, pemPrivate string, pemPublic string) {
 
