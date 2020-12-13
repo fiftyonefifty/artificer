@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"artificer/pkg/appError"
 	"artificer/pkg/client/models"
 	"artificer/pkg/util"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/xeipuuv/gojsonschema"
@@ -13,6 +16,7 @@ import (
 
 func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (err error) {
 
+	// TODO: I need a working schema for arbitrary claims.
 	schemaLoader := gojsonschema.NewStringLoader(`{
 		"$schema": "http://json-schema.org/draft-04/schema#",
 		"type": "object",
@@ -25,7 +29,7 @@ func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (
 	  }`)
 
 	if !json.Valid([]byte(req.ArbitraryClaims)) {
-		err = errors.New("arbitrary_claims: is not a valid json")
+		err = appError.New(http.StatusUnauthorized, "arbitrary_claims: is not a valid json")
 		fmt.Println(err.Error())
 		return
 	}
@@ -53,14 +57,14 @@ func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (
 
 	if len(req.Subject) > 0 {
 		if len(req.Subject) > models.MAX_SUBJECT_LEN {
-			err = errors.New(fmt.Sprintf("Subject is larger than allowed length: %d", models.MAX_SUBJECT_LEN))
+			err = appError.Newf(http.StatusUnauthorized, "Subject is larger than allowed length: %d", models.MAX_SUBJECT_LEN)
 			fmt.Println(err.Error())
 			return
 		}
 	}
 	if len(req.Scope) > 0 {
 		if len(req.Scope) > models.MAX_SCOPE_LEN {
-			err = errors.New(fmt.Sprintf("Scope is larger than allowed length: %d", models.MAX_SCOPE_LEN))
+			err = appError.Newf(http.StatusUnauthorized, "Scope is larger than allowed length: %d", models.MAX_SCOPE_LEN)
 			fmt.Println(err.Error())
 			return
 		}
@@ -74,7 +78,7 @@ func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (
 	ts := strings.TrimSpace(req.ArbitraryAmrs)
 	if len(ts) > 0 {
 		if !json.Valid([]byte(ts)) {
-			err = errors.New("arbitrary_amrs: is not a valid json")
+			err = appError.New(http.StatusUnauthorized, "arbitrary_amrs: is not a valid json")
 			fmt.Println(err.Error())
 			return
 		}
@@ -85,7 +89,7 @@ func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (
 			return
 		}
 		if !result.Valid() {
-			err = errors.New("arbitrary_amrs: did not pass schema validation")
+			err = appError.New(http.StatusUnauthorized, "arbitrary_amrs: did not pass schema validation")
 			fmt.Println(err.Error())
 			return
 		}
@@ -94,7 +98,7 @@ func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (
 	ts = strings.TrimSpace(req.ArbitraryAudiences)
 	if len(ts) > 0 {
 		if !json.Valid([]byte(ts)) {
-			err = errors.New("arbitrary_audiences: is not a valid json")
+			err = appError.New(http.StatusUnauthorized, "arbitrary_audiences: is not a valid json")
 			fmt.Println(err.Error())
 			return
 		}
@@ -105,7 +109,7 @@ func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (
 			return
 		}
 		if !result.Valid() {
-			err = errors.New("arbitrary_audiences: did not pass schema validation")
+			err = appError.New(http.StatusUnauthorized, "arbitrary_audiences: did not pass schema validation")
 			fmt.Println(err.Error())
 			return
 		}
@@ -113,7 +117,7 @@ func validateArbitraryResourceOwnerRequest(req *ArbitraryResourceOwnerRequest) (
 	return
 }
 
-func validateClient(req *TokenRequest) (err error, client models.Client) {
+func validateClient(ctx context.Context, req *TokenRequest) (err error, client models.Client) {
 
 	if len(req.ClientID) == 0 || len(req.ClientSecret) == 0 {
 		err = errors.New("client_id or client_secret is not present")
@@ -123,10 +127,14 @@ func validateClient(req *TokenRequest) (err error, client models.Client) {
 
 	sEnc := util.StringSha256Encode64(req.ClientSecret)
 	var found bool
-	found, client = clientStore.GetClient(req.ClientID)
+	found, client = clientStore.GetClient(ctx, req.ClientID)
 	if !found {
-		err = errors.New(fmt.Sprintf("client_id: %s does not exist", req.ClientID))
+		err = appError.Newf(http.StatusUnauthorized, "client_id: %s does not exist", req.ClientID)
 		fmt.Println(err.Error())
+		return
+	}
+
+	if err = appError.CheckForTimeout(ctx); err != nil {
 		return
 	}
 
@@ -138,7 +146,7 @@ func validateClient(req *TokenRequest) (err error, client models.Client) {
 		}
 	}
 	if !foundSecret {
-		err = errors.New(fmt.Sprintf("client_id: %s does not have a match for client_secret: %s", req.ClientID, req.ClientSecret))
+		err = appError.Newf(http.StatusUnauthorized, "client_id: %s does not have a match for client_secret: %s", req.ClientID, req.ClientSecret)
 		fmt.Println(err.Error())
 		return
 	}
@@ -146,7 +154,7 @@ func validateClient(req *TokenRequest) (err error, client models.Client) {
 	agt := client.AllowedGrantTypesMap[req.GrantType]
 
 	if agt == nil {
-		err = errors.New(fmt.Sprintf("client_id: %s is not authorized for grant_type: %s", req.ClientID, req.GrantType))
+		err = appError.Newf(http.StatusUnauthorized, "client_id: %s is not authorized for grant_type: %s", req.ClientID, req.GrantType)
 		fmt.Println(err.Error())
 		return
 	}

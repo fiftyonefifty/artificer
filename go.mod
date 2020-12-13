@@ -20,6 +20,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/creack/pty v1.1.9 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/ghstahl/go-syncmap-cache v2.1.0+incompatible
 	github.com/go-openapi/runtime v0.19.4
 	github.com/gobuffalo/envy v1.7.1
 	github.com/gogo/protobuf v1.3.0 // indirect
@@ -30,30 +31,32 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.11.3 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
+	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/jstemmer/go-junit-report v0.0.0-20191003211110-080dff894f9e // indirect
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/echo/v4 v4.1.11
+	github.com/leodido/go-urn v1.2.0 // indirect
+	github.com/lestrrat-go/jwx v0.9.0
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/marstr/randname v0.0.0-20181206212954-d5b0f288ab8c
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.10 // indirect
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/pascaldekloe/jwt v1.6.1-0.20191011205700-9118cfd8bc6d
-	github.com/pelletier/go-toml v1.4.0 // indirect
+	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/pmylund/go-cache v2.1.0+incompatible
-	github.com/prometheus/client_golang v1.1.0 // indirect
-	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
-	github.com/prometheus/common v0.7.0 // indirect
-	github.com/prometheus/procfs v0.0.5 // indirect
+	github.com/prometheus/client_golang v1.2.1 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/rogpeppe/fastuuid v1.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.4.0 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/afero v1.2.2 // indirect
+	github.com/spf13/cobra v0.0.5
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.4.0
@@ -73,14 +76,15 @@ require (
 	golang.org/x/mobile v0.0.0-20191002175909-6d0d39b2ca82 // indirect
 	golang.org/x/net v0.0.0-20191021144547-ec77196f6094 // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
-	golang.org/x/sys v0.0.0-20191022100944-742c48ecaeb7 // indirect
+	golang.org/x/sys v0.0.0-20191029155521-f43be2a4598c // indirect
 	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0 // indirect
 	golang.org/x/tools v0.0.0-20191003162220-c56b4b191e2d // indirect
 	google.golang.org/api v0.10.0 // indirect
 	google.golang.org/appengine v1.6.4 // indirect
 	google.golang.org/genproto v0.0.0-20191002211648-c459b9ce5143 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
+	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/dealancer/validate.v2 v2.1.0
 	gopkg.in/square/go-jose.v2 v2.3.1
-	gopkg.in/yaml.v2 v2.2.4 // indirect
 )

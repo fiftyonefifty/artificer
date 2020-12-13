@@ -8,6 +8,11 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Secrets
+docker-compose-acr.yml
+ 
+artificer-cobra/example/serve.json
+
 # User-specific files
 *.rsuser
 *.suo

@@ -33,20 +33,32 @@ var (
 func ClientID() string {
 	return clientID
 }
+func SetClientID(val string) {
+	clientID = val
+}
 
 // ClientSecret is the OAuth client secret.
 func ClientSecret() string {
 	return clientSecret
+}
+func SetClientSecret(val string) {
+	clientSecret = val
 }
 
 // TenantID is the AAD tenant to which this client belongs.
 func TenantID() string {
 	return tenantID
 }
+func SetTenantID(val string) {
+	tenantID = val
+}
 
 // SubscriptionID is a target subscription for Azure resources.
 func SubscriptionID() string {
 	return subscriptionID
+}
+func SetSubscriptionID(val string) {
+	subscriptionID = val
 }
 
 // deprecated: use DefaultLocation() instead

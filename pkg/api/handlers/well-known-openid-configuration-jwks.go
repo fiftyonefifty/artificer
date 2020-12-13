@@ -3,7 +3,9 @@ package handlers
 import (
 	"artificer/pkg/client/loaders"
 	"artificer/pkg/client/models"
+	jwtMinter "artificer/pkg/jwt-minter"
 	"artificer/pkg/keyvault"
+	"context"
 	"net/http"
 	"time"
 
@@ -24,9 +26,16 @@ type ClientContainer struct {
 }
 
 func GetTestSecret(c echo.Context) (err error) {
+	var (
+		ctx    context.Context
+		cancel context.CancelFunc
+	)
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel() // Cancel ctx as soon as handleSearch returns.
+
 	var clients []models.Client
 
-	clients, err = loaders.LoadClientConfigFromKeyVault()
+	clients, err = loaders.LoadClientConfigFromKeyVault(ctx)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, err.Error())
 
@@ -51,7 +60,7 @@ func MintTestToken(c echo.Context) (err error) {
 	claims.Set["primes"] = []int{2, 3, 5, 7, 11, 13}
 	claims.Set["roles"] = []string{"admin", "super-duper"}
 	claims.Set["scope"] = []string{"aud1", "aud2"}
-	tokenBuildRequest := keyvault.TokenBuildRequest{
+	tokenBuildRequest := jwtMinter.TokenBuildRequest{
 		Claims:       claims,
 		UtcNotBefore: &utcNotBefore,
 		UtcExpires:   &utcExpires,

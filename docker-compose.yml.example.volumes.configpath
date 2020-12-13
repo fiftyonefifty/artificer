@@ -1,0 +1,19 @@
+version: '3.7'
+services:
+
+  artificer:
+    image: 'artificer:latest'
+    command: 
+      - "serve" 
+      - "--config-path"
+      - "docker-config/serve.json"
+
+    volumes:
+      - type: bind
+        source: ./artificer-cobra/example
+        target: /root/docker-config
+    
+    ports:
+      - "9000:9000"
+      - "9998:9998"
+ 

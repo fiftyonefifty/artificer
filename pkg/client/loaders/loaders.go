@@ -6,6 +6,7 @@ import (
 	"artificer/pkg/client/loaders/keyvault"
 	"artificer/pkg/client/models"
 	"artificer/pkg/util"
+	"context"
 	"log"
 	"sort"
 	"sync"
@@ -35,7 +36,8 @@ type clientConfigResponse struct {
 	Found  bool
 }
 type clientConfigRequestOp struct { // bank operation: deposit or withdraw
-	Id      string                    // amount
+	ctx     context.Context
+	id      string                    // amount
 	confirm chan clientConfigResponse // confirmation channel
 }
 
@@ -57,7 +59,7 @@ func InitializeClientConfig(options ClientConfigOptions) {
 				-- otherwise, fall through to the next case, if any */
 				select {
 				case request := <-clientRequest:
-					found, client := pInMemoryClientStore.getClientUnsafe(request.Id)
+					found, client := pInMemoryClientStore.getClientUnsafe(request.id)
 					response := clientConfigResponse{
 						Found: found,
 					}
@@ -90,9 +92,9 @@ func (store InMemoryClientStore) getClientUnsafe(id string) (found bool, client 
 	return
 
 }
-func (store InMemoryClientStore) GetClient(id string) (found bool, client models.Client) {
+func (store InMemoryClientStore) GetClient(ctx context.Context, id string) (found bool, client models.Client) {
 
-	request := &clientConfigRequestOp{Id: id, confirm: make(chan clientConfigResponse)}
+	request := &clientConfigRequestOp{ctx: ctx, id: id, confirm: make(chan clientConfigResponse)}
 	clientRequest <- request
 	response := <-request.confirm
 	found = response.Found
@@ -102,17 +104,15 @@ func (store InMemoryClientStore) GetClient(id string) (found bool, client models
 	return
 }
 
-func LoadClientConfigFromKeyVault() (clients []models.Client, err error) {
+func LoadClientConfigFromKeyVault(ctx context.Context) (clients []models.Client, err error) {
 	clients, err = keyvault.FetchClientConfigFromKeyVault(clientConfigOptions.RootFolder)
 	return
 }
 
-func LoadClientConfig() {
+func LoadClientConfig(ctx context.Context) (err error) {
 
-	var err error
 	if clientConfigOptions.UseKeyVault {
 		clients, err = keyvault.FetchClientConfigFromKeyVault(clientConfigOptions.RootFolder)
-
 	} else {
 		clients, err = filesystem.FetchClientConfigFromFileSystem(clientConfigOptions.RootFolder)
 	}
@@ -135,5 +135,5 @@ func LoadClientConfig() {
 		}
 	}
 	pInMemoryClientStore.pCurrent = &a
-
+	return
 }

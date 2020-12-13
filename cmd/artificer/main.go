@@ -6,6 +6,7 @@ import (
 	"artificer/pkg/config"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -50,6 +51,7 @@ func Alive() {
 	fmt.Println(fmt.Sprintf("Alive:%s", now))
 }
 func main() {
+
 	var err error
 
 	err = config.ParseEnvironment()
@@ -66,8 +68,15 @@ func main() {
 		keyVaultDone <- true
 	}()
 	go func() {
+		var (
+			ctx    context.Context
+			cancel context.CancelFunc
+		)
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel() // Cancel ctx as soon as handleSearch returns.
+
 		fmt.Println("Startup Enter ... LoadClientConfig")
-		loaders.LoadClientConfig()
+		loaders.LoadClientConfig(ctx)
 		fmt.Println("Startup Complete ... LoadClientConfig")
 		clientConfigDone <- true
 	}()
@@ -85,8 +94,15 @@ func main() {
 	cronSpec = viper.GetString("clientConfig.cronSpec") // i.e. "@every 5min"
 
 	_, err = c.AddFunc(cronSpec, func() {
+		var (
+			ctx    context.Context
+			cancel context.CancelFunc
+		)
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel() // Cancel ctx as soon as handleSearch returns.
+
 		fmt.Println("CRON Enter ... LoadClientConfig")
-		loaders.LoadClientConfig()
+		loaders.LoadClientConfig(ctx)
 		fmt.Println("CRON Complete ... LoadClientConfig")
 	})
 	if err != nil {

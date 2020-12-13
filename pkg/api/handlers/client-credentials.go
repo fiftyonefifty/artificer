@@ -1,9 +1,14 @@
 package handlers
 
 import (
+	"artificer/pkg/appError"
+	"artificer/pkg/client/clientContext"
 	"artificer/pkg/client/models"
+	jwtMinter "artificer/pkg/jwt-minter"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -12,15 +17,17 @@ import (
 	"github.com/pascaldekloe/jwt"
 )
 
-func handleClientCredentialsFlow(c echo.Context) error {
+func handleClientCredentialsFlow(ctx context.Context, c echo.Context) (err error) {
 	req := &ClientCredentialsRequest{}
-	if err := c.Bind(req); err != nil {
+	if err = c.Bind(req); err != nil {
 		return err
 	}
 	var client models.Client
-	client = c.Get("_client").(models.Client)
-
-	//	_, client := clientStore.GetClient(req.ClientID)
+	var ok bool
+	client, ok = clientContext.FromContext(ctx)
+	if !ok {
+		return errors.New("context.Context doesn't contain client object")
+	}
 
 	scope := strings.TrimSpace(req.Scope)
 
@@ -77,7 +84,7 @@ func handleClientCredentialsFlow(c echo.Context) error {
 			break
 		}
 	}
-	tokenBuildRequest := keyvault.TokenBuildRequest{
+	tokenBuildRequest := jwtMinter.TokenBuildRequest{
 		Claims:       claims,
 		UtcNotBefore: &utcNotBefore,
 		UtcExpires:   &utcExpires,
@@ -86,6 +93,9 @@ func handleClientCredentialsFlow(c echo.Context) error {
 	token, err := keyvault.MintToken(c, &tokenBuildRequest)
 	if err != nil {
 		return err
+	}
+	if err = appError.CheckForTimeout(ctx); err != nil {
+		return
 	}
 
 	resp := ClientCredentialsResponse{

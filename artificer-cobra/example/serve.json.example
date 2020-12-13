@@ -1,0 +1,12 @@
+{
+    "serveConfig":{
+        "port":"9000",
+        "healthCheckPort":"9998",
+        "keyVaultClientId": "ddecd689-3d6c-4311-b354-45ab6fa7e48c",
+        "keyVaultClientSecret":"<<secret>>",
+        "azureGroupName":"my-resource",
+        "azureTenantId":"3b257a9b-7c58-428b-c022-5ad741ce2016",
+        "azureSubscriptionId":"59ac48fb-dea0-484a-ca84-e0be9b06c663"
+    } 
+
+}

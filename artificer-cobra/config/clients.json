@@ -1,0 +1,89 @@
+{
+	"clients": [{
+		"enabled": true,
+		"clientId": "arbitrary-resource-owner-client",
+		"clientName": "test-clientName",
+		"description": "test-description",
+		"namespace": "test-namespace",
+		"requireRefreshClientSecret": true,
+		"allowOfflineAccess": true,
+		"updateAccessTokenClaimsOnRefresh": true,
+		"includeJwtId": true,
+		"alwaysSendClientClaims": true,
+		"alwaysIncludeUserClaimsInIdToken": true,
+		"requireClientSecret": true,
+		"accessTokenLifetime": 3600,
+		"absoluteRefreshTokenLifetime": 3600,
+		"slidingRefreshTokenLifetime": 900,
+		"identityTokenLifetime": 2600000,
+		"refreshTokenUsage": 1,
+		"refreshTokenExpiration": 1,
+		"accessTokenType": 0,
+		"claims": [{
+			"type": "artificer-ns",
+			"value": "private namespace"
+		},{
+			"type": "role",
+			"value": "admin"
+		}, {
+			"type": "role",
+			"value": "dog-owner"
+		}, {
+			"type": "scope",
+			"value": "rock-climber"
+		}],
+		"allowedScopes": ["artificer-ns","a", "b", "c"],
+		"allowedGrantTypes": [
+			"client_credentials",
+			"arbitrary_resource_owner",
+			"arbitrary_identity"
+		],
+		"clientSecrets": [{
+			"expiration": 1604102400,
+			"value": "K7gNU3sdo+OL0wNhqoVWhr3g6s1xYv72ol/pe/Unols="
+		}]
+	},{
+		"enabled": true,
+		"clientId": "b2b-client",
+		"clientName": "test-clientName",
+		"description": "test-description",
+		"namespace": "test-namespace",
+		"requireRefreshClientSecret": true,
+		"allowOfflineAccess": true,
+		"updateAccessTokenClaimsOnRefresh": true,
+		"includeJwtId": true,
+		"alwaysSendClientClaims": true,
+		"alwaysIncludeUserClaimsInIdToken": true,
+		"requireClientSecret": true,
+		"accessTokenLifetime": 3600,
+		"absoluteRefreshTokenLifetime": 3600,
+		"slidingRefreshTokenLifetime": 900,
+		"identityTokenLifetime": 2600000,
+		"refreshTokenUsage": 1,
+		"refreshTokenExpiration": 1,
+		"accessTokenType": 0,
+		"claims": [{
+			"type": "artificer-ns",
+			"value": "private namespace"
+		},{
+			"type": "role",
+			"value": "admin"
+		}, {
+			"type": "role",
+			"value": "dog-owner"
+		}, {
+			"type": "scope",
+			"value": "rock-climber"
+		}],
+		"allowedScopes": ["artificer-ns","a", "b", "c"],
+		"allowedGrantTypes": [
+			"client_credentials",
+			"arbitrary_resource_owner",
+			"arbitrary_identity"
+		],
+		"clientSecrets": [{
+			"expiration": 1604102400,
+			"value": "K7gNU3sdo+OL0wNhqoVWhr3g6s1xYv72ol/pe/Unols="
+		}]
+	}]
+}

@@ -1,9 +1,5 @@
 package handlers
 
-import (
-	"artificer/pkg/client/models"
-)
-
 type (
 	TokenRequest struct {
 		ClientID     string `json:"client_id" form:"client_id" query:"client_id"`
@@ -24,7 +20,6 @@ type (
 		ArbitraryAmrs       string `json:"arbitrary_amrs" form:"arbitrary_amrs" query:"arbitrary_amrs"`
 		ArbitraryAudiences  string `json:"arbitrary_audiences" form:"arbitrary_audiences" query:"arbitrary_audiences"`
 		AccessTokenLifetime int    `json:"access_token_lifetime" form:"access_token_lifetime" query:"access_token_lifetime"`
-		Client              models.Client
 	}
 
 	ClientCredentialsResponse struct {

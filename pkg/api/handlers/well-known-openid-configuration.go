@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	gocache "github.com/ghstahl/go-syncmap-cache"
 	echo "github.com/labstack/echo/v4"
-	gocache "github.com/pmylund/go-cache"
 )
 
 var (

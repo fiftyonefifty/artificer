@@ -1,0 +1,31 @@
+version: '3.7'
+services:
+
+  artificer:
+    image: 'p7coredockerhub.azurecr.io/artificer:dev'
+    command: 
+      - "serve" 
+      - "--port" 
+      - "9000" 
+      - "--healthcheck-port" 
+      - "9998" 
+      - "--key-vault-client-secret" 
+      - "<<SECRET>>" 
+      - "--key-vault-client-id" 
+      - "ddecd689-3d6c-4311-b354-45ab6fa7e48c" 
+      - "--az-tenant-id" 
+      - "3b217a9b-6c58-428b-b022-5ad741ce2016" 
+      - "--az-group-name" 
+      - "cct-test-resource" 
+      - "--az-subscription-id" 
+      - "39ac48fb-fea0-486a-ba84-e0ae9b06c663" 
+    environment:
+      -  AZURE_CLIENT_ID=ddecd689-3d6c-4311-b354-45ab6fa7e48c
+      -  AZURE_CLIENT_SECRET=<<SECRET>>
+      -  AZURE_SUBSCRIPTION_ID=39ac48fb-fea0-486a-ba84-e0ae9b06c663
+      -  AZURE_TENANT_ID=3b217a9b-6c58-428b-b022-5ad741ce2016
+    ports:
+      - "9000:9000"
+      - "9998:9998"
+
+ 

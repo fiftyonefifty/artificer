@@ -1,24 +1,37 @@
 package handlers
 
 import (
+	"artificer/pkg/appError"
+	"artificer/pkg/client/clientContext"
 	"artificer/pkg/client/models"
 	"artificer/pkg/keyvault"
 	"artificer/pkg/util"
+	"context"
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"time"
+
+	jwtMinter "artificer/pkg/jwt-minter"
 
 	echo "github.com/labstack/echo/v4"
 	"github.com/pascaldekloe/jwt"
 )
 
-func buildArbitraryResourceOwnerClaims(req *ArbitraryResourceOwnerRequest) (err error, tokenBuildRequest keyvault.TokenBuildRequest) {
+func buildArbitraryResourceOwnerClaims(ctx context.Context, req *ArbitraryResourceOwnerRequest) (err error, tokenBuildRequest jwtMinter.TokenBuildRequest) {
 
 	if err = validateArbitraryResourceOwnerRequest(req); err != nil {
 		return
 	}
 
-	client := req.Client
+	var client models.Client
+	var ok bool
+	client, ok = clientContext.FromContext(ctx)
+	if !ok {
+		err = errors.New("context.Context doesn't contain client object")
+		return
+	}
 
 	var objmap map[string]interface{}
 	err = json.Unmarshal([]byte(req.ArbitraryClaims), &objmap)
@@ -126,22 +139,25 @@ func buildArbitraryResourceOwnerClaims(req *ArbitraryResourceOwnerRequest) (err 
 	return
 }
 
-func handleArbitraryResourceOwnerFlow(c echo.Context) (err error) {
+func handleArbitraryResourceOwnerFlow(ctx context.Context, c echo.Context) (err error) {
 	req := &ArbitraryResourceOwnerRequest{}
 	if err = c.Bind(req); err != nil {
 		return
 	}
-	req.ClientID = "<purposefully set to bad, use req.Client>"
-	req.Client = c.Get("_client").(models.Client)
 
-	err, tokenBuildRequest := buildArbitraryResourceOwnerClaims(req)
+	err, tokenBuildRequest := buildArbitraryResourceOwnerClaims(ctx, req)
 	if err != nil {
 		return err
 	}
 
 	token, err := keyvault.MintToken(c, &tokenBuildRequest)
 	if err != nil {
+		log.Printf("ERROR: %s", err.Error())
+		err = appError.Newf(http.StatusUnauthorized, "Too Many Requests: retry after %d", time.Minute*5)
 		return err
+	}
+	if err = appError.CheckForTimeout(ctx); err != nil {
+		return
 	}
 
 	resp := ClientCredentialsResponse{
